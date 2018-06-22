@@ -1,0 +1,413 @@
+@import "./common/quote.scss";
+
+#main {
+  .login {
+    display: -webkit-flex;
+    display: -ms-flex;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    height: 100vh;
+    background-color: #eee;
+
+    .loginbox {
+      display: inline-block;
+      background: #fff;
+      width: 300px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 6px;
+
+      .item {
+        margin-bottom: 30px;
+      }
+
+      .logobox {
+        font-size: 20px;
+
+        img {
+          height: 30px;
+          margin-right: 10px;
+        }
+
+        span {
+          padding-top: 4px;
+        }
+      }
+    }
+  }
+
+  .ant-table {
+    background-color: #fff;
+
+    th {
+      white-space: nowrap;
+      // text-align: center;
+    }
+  }
+
+  .links a {
+    margin-right: 6px;
+  }
+
+  .frmbtntop {
+    padding-bottom: 20px;
+
+    .ant-btn {
+      margin-right: 10px;
+    }
+  }
+
+  .frminput {
+    background: #fff;
+    border-radius: 6px;
+    padding: 12px 20px;
+    margin-bottom: 15px;
+  }
+
+  .tbdetail {
+    background-color: #fff;
+    padding: 20px;
+    min-height: calc(100vh - 104px);
+
+    .inlinepull {
+      width: 100%;
+      margin-bottom: 24px;
+      vertical-align: top;
+    }
+    // .beteen {
+    //   display: none;
+    // }
+    .tbbar {
+      border-bottom: 1px solid #ddd;
+      padding: 20px 0 6px;
+      font-size: 1.2em;
+      margin-bottom: 6px;
+    }
+
+    .tbbar2 {
+      margin-top: 20px;
+      border-top: 1px solid #ddd;
+      padding: 20px 0;
+      font-size: 1.1em;
+      margin-bottom: 6px;
+    }
+
+    td,
+    th {
+      padding: 6px 10px;
+      vertical-align: top;
+
+      &:first-child {
+        white-space: nowrap;
+      }
+
+      .tdlist {
+        li {
+          margin-bottom: 6px;
+        }
+
+        .money {
+          font-size: 20px;
+          vertical-align: middle;
+          padding-left: 10px;
+        }
+      }
+    }
+
+    .account {
+      font-size: 30px;
+    }
+
+    .tbtitle {
+      white-space: nowrap;
+    }
+
+    .istus {
+      margin-left: 8px;
+    }
+
+    .imglink {
+      display: block;
+
+      img {
+        max-width: 300px;
+      }
+    }
+  }
+
+  .buyservice {
+    .rdolist {
+      margin-top: 10px;
+      margin-bottom: 30px;
+    }
+  }
+}
+
+.imglist {
+  a {
+    margin-right: 10px;
+    display: inline-block;
+
+    img {
+      width: 100px;
+    }
+  }
+}
+
+.notecomment {
+  width: 100%;
+
+  td {
+    vertical-align: top;
+    color: #333;
+    padding: 0 10px;
+
+    &:first-child {
+      white-space: nowrap;
+    }
+  }
+
+  .moeny {
+    background-color: #ddd;
+    color: $colorGary;
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .item {
+    margin-bottom: 10px;
+  }
+
+  p {
+    margin-bottom: 0;
+  }
+
+  .ant-collapse-content,
+  .ant-collapse-header {
+    padding: 0 !important;
+  }
+}
+
+#lbl5 {
+  .ant-form-item-label {
+    width: 5em;
+  }
+}
+
+.notemodal {
+  .ant-modal-body {
+    padding: 0;
+  }
+
+  .notescroll {
+    height: 70vh;
+    overflow-y: auto;
+    padding: 24px;
+  }
+
+  .ant-list-something-after-last-item .ant-list-item:last-child {
+    border-bottom: 0;
+  }
+
+  iframe {
+    border: 0;
+    width: 100%;
+  }
+}
+
+html body {
+  .form .ant-checkbox-group-item {
+    margin-top: 6px;
+  }
+}
+
+.vtop {
+  vertical-align: top;
+}
+
+#container {
+  height: 300px;
+  line-height: normal;
+}
+
+.bjdetail {
+  .statuslist {
+    li {
+      display: inline-block;
+      margin-left: 20px;
+      color: #666;
+    }
+  }
+
+  .bjdoctor {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 6px;
+  }
+
+  .btnbar {
+    border-top: 5px solid #F2F4F5;
+    font-size: 14px;
+    color: #666;
+    padding: 12px 16px;
+    position: relative;
+    border-bottom: 1px solid #D8D8D8;
+    line-height: 20px;
+
+    span {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      color: #999;
+      background: url("../img/icon/yizhan_timerow_down@2x.png") no-repeat left center /20px;
+      padding-left: 24px;
+
+      &.up {
+        background-image: url("../img/icon/yizhan_timerow_up@2x.png");
+      }
+    }
+  }
+
+  .bjcontent {
+    padding: 20px 0;
+  }
+
+  .morelink {
+    color: #20A2D7;
+    font-size: 14px;
+    padding-top: 8px;
+    // display: none;
+    img {
+      width: 15px;
+      transition: all 0.2s ease-out;
+    }
+
+    i {
+      font-style: normal;
+    }
+  }
+
+  .morelinkdown img {
+    transform: rotate(180deg);
+  }
+
+  .files {
+    li {
+      margin: 10px 0;
+      background-color: #ddd;
+      border-radius: 4px;
+      padding: 10px;
+    }
+  }
+}
+
+.addreduce {
+  font-size: 24px;
+  margin-left: 20px;
+  vertical-align: middle;
+
+  i:hover {
+    cursor: pointer;
+  }
+}
+
+.drugform {
+  .ant-form-item-label {
+    width: 8em;
+  }
+}
+
+.pr10 {
+  padding-right: 10px;
+}
+
+.platform {
+  background-color: #fff;
+  padding: 100px 20px;
+
+  .price1 {
+    font-size: 30px;
+  }
+
+  .pttitle {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .typebar {
+    font-size: 1.1em;
+  }
+
+  .tbchart {
+    border-bottom: 1px solid #eee;
+    padding: 30px 100px;
+    margin-bottom: 40px;
+
+    table {
+      width: 100%;
+    }
+
+    td:nth-child(1) {
+      width: 25%;
+    }
+
+    tr:nth-child(2) td {
+      font-size: 20px;
+
+      &:first-child {
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+.cashintro {
+  padding-top: 100px;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #eee;
+
+  ul {
+    text-align: left;
+    display: inline-block;
+  }
+}
+
+.cashcfm {
+  padding-top: 20px;
+
+  h4 {
+    font-size: 30px;
+  }
+}
+
+.msgedit {
+  .ant-tabs-vertical > .ant-tabs-bar .ant-tabs-tab {
+    margin-bottom: 0;
+  }
+
+  .tbcontainer {
+    height: 288px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+
+    .ant-tabs-tab-next {
+      border-top: 1px solid #eee;
+    }
+
+    .ant-tabs-tab-prev {
+      border-bottom: 1px solid #eee;
+    }
+
+    .ant-tabs-tabpane {
+      padding: 20px 20px 20px 0;
+    }
+
+    .ant-checkbox-wrapper {
+      margin-bottom: 10px;
+      margin-left: 0;
+    }
+  }
+}

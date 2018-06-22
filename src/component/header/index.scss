@@ -1,0 +1,34 @@
+@import "../../scss/common/quote.scss";
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  height: $headerHeight;
+  background-color: #fff;
+  -webkit-box-shadow: 0 1px 4px rgba(0,21,41,.08);
+  box-shadow: 0 1px 4px rgba(0,21,41,.08);
+  border-bottom: 1px solid #ddd;
+  padding: 0 20px;
+
+  .logobox {
+    background: url("../../img/icon/logo.png") no-repeat left center /30px;
+    padding-left: 40px;
+    line-height: $headerHeight;
+    font-size: 26px;
+    float: left;
+  }
+
+  .userinfo {
+    float: right;
+
+    .ant-dropdown-link {
+      line-height: $headerHeight/2;
+      margin-top: $headerHeight/4;
+      display: block;
+      padding-left: 20px;
+    }
+  }
+}

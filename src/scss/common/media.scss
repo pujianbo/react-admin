@@ -1,0 +1,20 @@
+//media.css(px don't to rem)
+@import "quote.scss";
+
+html {
+    font-size: #{$fontBig}px;
+}
+$screenSize: $screenBig;
+@for $i from ($screenBig+(-300))/50 through 0 {
+     @media screen and(max-width:#{$screenSize}px){
+        html {
+            font-size: #{$screenSize/$screenBig*$fontBig}px;
+        }
+    }
+    $screenSize: $screenSize+(-50);
+}
+
+body {
+    min-height: 100vh;
+    margin: 0 auto;
+}

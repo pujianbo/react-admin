@@ -1,0 +1,21 @@
+//public color、size、function
+$colorBlack: #000;
+$colorBorder: #ccc;
+$colorWhite: #FFF;
+$colorRed: #ff5d65; //use
+$colorBlue: #1890ff; //use
+$colorGreen: #52c41a; //use
+$colorOrange: #F87942;
+$colorGary: #999999;
+$colorYellow: #F8BE41;
+$colorBrown: #E1932E;
+$fontBig: 24;
+$screenBig: 750;
+$headerHeight: 64px;
+$menuWidth: 200px;
+
+.text-els {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
