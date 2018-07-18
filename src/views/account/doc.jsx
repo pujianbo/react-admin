@@ -37,7 +37,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -65,14 +68,10 @@ export default class datalist extends Component {
         dataIndex: 'hospitalName'
       }, {
         title: '科室',
-        render: (value, record) => record.jobTitle
-          ? this.state.jobList.find(i => i.id == record.jobTitle).name
-          : null
+        dataIndex: 'deptName'
       }, {
         title: '职称',
-        render: (value, record) => record.jobTitle
-          ? record.jobTitle.name
-          : null
+        dataIndex: 'jobTitleDesc'
       }, {
         title: '认证状态',
         render: (value, record) => ['未认证', '已认证'][record.status]
@@ -87,18 +86,18 @@ export default class datalist extends Component {
       }, {
         title: '账户状态',
         dataIndex: 'status',
-        render: (value, record) => ['未激活', '正常', '冻结'][record.status]
+        render: (value, record) => ['未激活', '正常', '冻结'][record.userStatus]
       }, {
         title: '操作',
         key: 'id',
         render: (value, record) => (<span className='links'>
           <Link title='详情' to={`/account/detail/doctor/${record.id}`}><Icon type="exclamation-circle-o"/></Link>
-          <a title={record.status == 2
+          <a title={record.userStatus == 2
               ? '解冻'
               : '冻结'} onClick={this.edit.bind(
-              this, value, record.status == 2
+              this, value, record.userStatus == 2
               ? '解冻'
-              : '冻结')}><Icon type={record.status == 2
+              : '冻结')}><Icon type={record.userStatus == 2
             ? 'unlock'
             : 'lock'}/></a>
         </span>)
@@ -132,8 +131,10 @@ export default class datalist extends Component {
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           message.error(res.message)
         }
@@ -267,7 +268,9 @@ export default class datalist extends Component {
           </Col>
           <Col span={8}>
             <FormItem label="用户手机">
-              <Input placeholder='搜索用户手机号' maxLength='11' onChange={this.getValue.bind(this, 'phone')} style={{width: '220px'}}/>
+              <Input placeholder='搜索用户手机号' maxLength='11' onChange={this.getValue.bind(this, 'phone')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>

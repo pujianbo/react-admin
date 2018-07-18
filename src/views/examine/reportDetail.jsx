@@ -1,31 +1,80 @@
 import React, {Component} from 'react'
 import {Link} from 'react-router'
 import moment from 'moment'
-import {Checkbox,Button} from 'antd';
+import {Button, Modal} from 'antd';
 
 export default class datalist extends Component {
   constructor() {
     super();
+    this.day = 1
     this.state = {
       result: [],
       message: null
     }
   }
 
+  //批量操作
+  //批量操作
+  handleSlt(e) {
+    const plainOptions = ['1天', '3天', '5天'];
+    const delType = e.target.innerText;
+    let _this = this;
+    Modal.confirm({
+      title: `您确定要${delType}以下记录吗?`, content: <div>选择项：{this.selectedRowName}{
+          delType.indexOf('冻结') > -1
+            ? <div style={{
+                  marginTop: '10px'
+                }}>冻结天数：<RadioGroup options={plainOptions} defaultValue={plainOptions[0]} onChange={this.sltDay.bind(this)}/></div>
+            : null
+        }</div>,
+      onOk() {
+        let url = `/report/operation`
+        let type = 'POST'
+        let data = {
+          ids: _this.selectedRowID,
+          type: 0 //0 忽略 1 删除评论 2 冻结账号
+        }
+        if (delType.indexOf('删除') > -1) {
+          data.type = 1
+        } else if (delType.indexOf('冻结') > -1) {
+          data.type = 2
+          data.dayNum = _this.day
+          data.freeze = '非法操作'
+        }
+        _this.mulDataHandle(url, type, data)
+      }
+    });
+  }
+
+  //批量操作数据
+  mulDataHandle(url, type, data) {
+    ajax({
+      url,
+      type,
+      data,
+      success: res => {
+        if (res.code == 0) {
+          message.success(res.message)
+          this.getData(1);
+        } else {
+          message.error(res.message)
+        }
+      }
+    })
+  }
+
   componentWillMount() {
     const {type, id} = this.props.params
-    // ajax({
-    //   url: `/${type}/${type == 'doctor'
-    //     ? 'detail'
-    //     : 'get'}/${id}`,
-    //   success: res => {
-    //     if (res.result) {
-    //       this.setState({result: res.result})
-    //     } else {
-    //       this.setState({message: '未查询到信息'})
-    //     }
-    //   }
-    // })
+    ajax({
+      url: `/report/queryDetails?reportId=${id}`,
+      success: res => {
+        if (res.result) {
+          this.setState({result: res.result})
+        } else {
+          this.setState({message: '未查询到信息'})
+        }
+      }
+    })
   }
 
   render() {
@@ -40,37 +89,37 @@ export default class datalist extends Component {
                 }}>
                 <Button style={{
                     marginRight: '10px'
-                  }}>忽略</Button>
-                <Button>处理</Button>
+                  }} onClick={this.handleSlt.bind(this)}>忽略</Button>
+                <Button style={{
+                    marginRight: '10px'
+                  }} onClick={this.handleSlt.bind(this)}>删除</Button>
+                <Button onClick={this.handleSlt.bind(this)}>冻结</Button>
               </div>
               <table>
                 <colgroup span="1" className='tbtitle'/>
                 <tr>
                   <td>被举报人：</td>
-                  <td>柳木海</td>
+                  <td>{result.toNickname}</td>
                 </tr>
                 <tr>
                   <td>举报类型：</td>
-                  <td>评论</td>
+                  <td>{['评论', '用户'][result.type]}</td>
                 </tr>
                 <tr>
                   <td className='vtop'>被举报内容：</td>
                   <td>
-                    <ul>
-                      <li>可以视频聊天了，大幅提升医患沟通体验；可以自我诊断……</li>
-                      <li>1.朋友圈虚假健康文章太多，来这里可以看看医生写的「科普文章」，每天学点健康知识；</li>
-                      <li>2.生病了，想了解下疾病症状，怎么治，吃什么药，去哪个医院治疗比较好，可以通过「常见病症」查找；</li>
-                      <li>3.孕妇、喂奶期的妈妈，最担心吃错药对孩子有不良影响，丁香医生对药品安全性做了标注，在丁香医生搜索这个药品，就知道能不能吃；</li>
-                      <li>4.吃药期间，多份药物同时服用时，给出「药物相关作用」，为您生成「服药清单」，输入服药间隔后，自动「服药提醒」；</li>
-                      <li>5.爸妈容易被忽悠买保健品？试试丁香医生的「鉴别虚假医疗广告」功能，让虚假广告显出原形;</li>
-                      <li>6.小孩打疫苗很麻烦，老是忘记怎么办？试试「疫苗管理」功能，打什么疫苗，什么时间，去哪打，一目了然。</li>
-                    </ul>
-                    <div className='imglist'>
-                      <a target='_blank'><img src='https://wx1.sinaimg.cn/thumb150/92be1fb5ly1fq7c38bcrjj203j03jmx1.jpg'/></a>
-                      <a target='_blank'><img src='https://wx1.sinaimg.cn/thumb150/92be1fb5ly1fq7c38bcrjj203j03jmx1.jpg'/></a>
-                      <a target='_blank'><img src='https://wx1.sinaimg.cn/thumb150/92be1fb5ly1fq7c38bcrjj203j03jmx1.jpg'/></a>
-                      <a target='_blank'><img src='https://wx1.sinaimg.cn/thumb150/92be1fb5ly1fq7c38bcrjj203j03jmx1.jpg'/></a>
-                    </div>
+                    {result.content}
+                    {
+                      result.reportImgs && result.reportImgs.length > 0
+                        ? <div className='imglist'>
+                            {
+                              result.reportImgs.map(item => {
+                                return <a target='_blank'><img src='https://wx1.sinaimg.cn/thumb150/92be1fb5ly1fq7c38bcrjj203j03jmx1.jpg'/></a>
+                              })
+                            }
+                          </div>
+                        : null
+                    }
                   </td>
                 </tr>
               </table>
@@ -79,19 +128,19 @@ export default class datalist extends Component {
                 <colgroup span="1" className='tbtitle'/>
                 <tr>
                   <td>处理状态：</td>
-                  <td>待处理</td>
+                  <td>{['忽略', '待处理', '已处理'][result.status]}</td>
                 </tr>
                 <tr>
                   <td>被举报次数：</td>
-                  <td>44</td>
+                  <td>{result.reportCount}</td>
                 </tr>
                 <tr>
                   <td>举报人：</td>
-                  <td>李开慧</td>
+                  <td>{result.fromNickname}</td>
                 </tr>
                 <tr>
                   <td>举报时间：</td>
-                  <td>{moment(result.cteateDate).format(format)}</td>
+                  <td>{moment(result.createDate).format(format)}</td>
                 </tr>
               </table>
             </div>

@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -11,7 +11,7 @@ import {
   Select,
   message
 } from 'antd';
-import {departList, jobTitles} from '../../tools'
+import {departList, jobTitles, unitMoney} from '../../tools'
 
 const FormItem = Form.Item;
 const Option = Select.Option;
@@ -22,13 +22,12 @@ export default class datalist extends Component {
     this.selectedRowID = '';
     this.selectedRowName = '';
     this.query = {
-      name: '',
-      status: -1,
-      start: "1970-01-01 00:00:00",
-      stop: "2099-01-01 00:00:00"
+      pageIndex: 1,
+      pageSize: 10
     };
     this.state = {
       loading: false,
+      dltdisabled: true,
       data: [],
       jobList: [],
       departList: [],
@@ -38,51 +37,56 @@ export default class datalist extends Component {
         total: 1
       },
       rowSelection: {
+        selectedRowKeys: [],
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
           let sltname = ''
           selectedRows.map(item => {
             sltid.push(item.id)
-            sltname += item.title + ','
+            sltname += item.msgTitle + ','
           })
           this.selectedRowID = sltid;
           this.selectedRowName = sltname.slice(0, -1);
+          return true
         }
       }
     };
     this.columns = [
       {
         title: '医生',
-        dataIndex: 'title'
+        dataIndex: 'realName'
       }, {
         title: '医生职称',
-        dataIndex: 'name'
+        dataIndex: 'edu'
       }, {
         title: '科室',
-        dataIndex: 'doc'
+        dataIndex: 'deptName'
       }, {
         title: '医院',
-        dataIndex: 'hosp'
+        dataIndex: 'hospName'
       }, {
         title: '收入',
-        render: (value, record) => '500,000'
+        render: (record) => unitMoney(record.income)
       }, {
         title: '支出',
-        render: (value, record) => '900,000'
+        render: (record) => unitMoney(record.exp)
       }, {
         title: '提现',
-        render: (value, record) => '500,000'
+        render: (record) => unitMoney(record.PutForward)
       }, {
         title: '余额',
-        render: (value, record) => '900,000'
+        render: (record) => unitMoney(record.balance)
       }, {
         title: '操作',
         key: 'id',
-        render: (value, record, index) => {
-          return <Link title='详情' to={`/money/doctor/detail/${record.id}`}><Icon type="exclamation-circle-o"/></Link>
+        render: (record) => {
+          return <Link title='详情' to={`/money/doctor/detail/${record.uid}`}><Icon type="exclamation-circle-o"/></Link>
         }
       }
     ];
@@ -110,15 +114,17 @@ export default class datalist extends Component {
     if (newpage)
       pagination.current = newpage;
     const {current, pageSize} = pagination
-    console.log(pagination);
+    this.query.pageIndex = current
     ajax({
-      url: `/v1/tcm/healthcaresuggests?pageIndex=${current}&pageSize=${pageSize}&parameter=${encodeURI(JSON.stringify(this.query))}`,
-      type: 'GET',
-      // data: this.query,
+      url: `/financialManage/queryDoctorInfo`,
+      type: 'POST',
+      data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -140,28 +146,41 @@ export default class datalist extends Component {
 
   //重置数据
   resetData() {
-    console.log('resetData');
+    hashHistory.push('/goback')
+  }
+
+  //导出Excel
+  saveExcel() {
+    this.setState({loading: true})
+    ajaxBlob({
+      url: '/financialManage/exportdoctorfinancial',
+      data: this.query,
+      filename: `医生财务.xls`
+    }, () => {
+      this.setState({loading: false})
+    })
   }
 
   render() {
     const {
       data,
       pagination,
-      loading,
       rowSelection,
+      dltdisabled,
+      loading,
       jobList,
       departList
     } = this.state
     return (<div>
       <Form className='frmbtntop text-right'>
         <Button onClick={this.resetData.bind(this)}>重置</Button>
-        <Button>导出</Button>
+        <Button onClick={this.saveExcel.bind(this)} loading={loading}>导出</Button>
       </Form>
       <Form layout="inline" className='frminput' id='lbl5'>
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="医生">
-              <Input placeholder='搜索医生姓名或手机号' onChange={this.getValue.bind(this, 'name')} style={{
+              <Input placeholder='搜索医生姓名或手机号' onChange={this.getValue.bind(this, 'name_phone')} style={{
                   width: '220px'
                 }}/>
             </FormItem>
@@ -170,7 +189,7 @@ export default class datalist extends Component {
             <FormItem label="医生职称">
               <Select defaultValue="" style={{
                   width: '220px'
-                }} onChange={this.sltStatus.bind(this, 'title')}>
+                }} onChange={this.sltStatus.bind(this, 'edu')}>
                 <Option value="">全部</Option>
                 {
                   jobList.map(item =>< Option value = {
@@ -186,24 +205,29 @@ export default class datalist extends Component {
             <FormItem label="所属科室">
               <Select defaultValue="" style={{
                   width: '220px'
-                }} onChange={this.sltStatus.bind(this, 'title')}>
+                }} onChange={this.sltStatus.bind(this, 'dept')}>
                 <Option value="">全部</Option>
                 {departList.map(item => <Option value={item.id}>{item.name}</Option>)}
               </Select>
             </FormItem>
           </Col>
         </Row>
-        <Row gutter={8}>
-          <Col span={8}>
-            <FormItem label="所属医院">
-              <Input placeholder='搜索医生姓名或手机号' onChange={this.getValue.bind(this, 'name')} style={{
-                  width: '220px'
-                }}/>
-            </FormItem>
-          </Col>
-        </Row>
+        {
+          localStorage.hospitalId
+            ? null
+            : <Row gutter={8}>
+                <Col span={8}>
+                  <FormItem label="所属医院">
+                    <Input placeholder='搜索医院名称' onChange={this.getValue.bind(this, 'hospName')} style={{
+                        width: '220px'
+                      }}/>
+                  </FormItem>
+                </Col>
+              </Row>
+        }
+
       </Form>
-      <Table columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
+      <Table rowSelection={rowSelection} columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
     </div>)
   }
 }

@@ -16,6 +16,8 @@ import moment from 'moment'
 const createForm = Form.create;
 const FormItem = Form.Item;
 const Option = Select.Option;
+message.config({top: 100, maxCount: 1});
+import {unitMoney} from '../../tools'
 const formItemLayout = {
   labelCol: {
     xs: {
@@ -35,99 +37,133 @@ const formItemLayout = {
   }
 };
 
-function number(num) {
-  return Math.floor(Math.random() * num)
-}
-function addData() {
-  const commentData = [];
-  for (let i = 1; i < 4; i++) {
-    commentData.push({
-      user: {
-        name: '测试用户' + number(10),
-        time: `2018.${number(10)}.${number(10)}`,
-        content: '医生说的就是这样了'
-      },
-      comment: [
-        {
-          name: `病患${number(100)}号`,
-          content: '感谢医生分享'
-        }, {
-          name: `病患${number(100)}号`,
-          content: '感谢医生分享'
-        }, {
-          name: `病患${number(100)}号`,
-          content: '感谢医生分享'
-        }, {
-          name: `病患${number(100)}号`,
-          content: '感谢医生分享'
-        }, {
-          name: `病患${number(100)}号`,
-          content: '感谢医生分享'
-        }
-      ]
-    });
-  }
-  return commentData
-}
-
 let Demo = React.createClass({
+  data: null,
   getInitialState() {
-    return {
-      loading: false,
-      accountList: [
-        {
-          id: 1,
-          name: '中国银行（8430）'
-        }, {
-          id: 2,
-          name: '农业银行（3477）'
-        }, {
-          id: 3,
-          name: '招商银行（5699）'
-        }, {
-          id: 4,
-          name: '建设银行（3454）'
+    return {fee: 1, loading: false, visible: false, result: {}, accountList: []};
+  },
+  componentDidMount() {
+    this.getMoney()
+  },
+  componentWillReceiveProps() {
+    ajax({
+      url: '/v1/bankcard/currentuserall',
+      success: res => {
+        if (res.result && res.result.length > 0) {
+          this.setState({accountList: res.result})
+        } else {
+          this.setState({accountList: []})
+          message.warn('请先添加银行卡')
         }
-      ]
-    };
+      }
+    })
+  },
+  getMoney() {
+    ajax({
+      url: `/financialManage/queryHospitalInfoDetails?hospId=${localStorage.hospitalId}`,
+      success: res => {
+        if (res.result) {
+          this.setState({result: res.result})
+        }
+      }
+    })
   },
   handleSubmit(e) {
     e.preventDefault();
     this.props.form.validateFields((errors, values) => {
-
+      let _this = this;
       if (!!errors)
         return
       let data = this.props.form.getFieldsValue();
-      confirm({
-        title: '确认提现?', content: <div className='cashcfm'>
-          <h4 className='cred'>￥101.00</h4>
-          <p>（实际到账100元，提现手续费1元）</p>
-        </div>,
-        okText: '提现',
-        onOk() {
-          // ajax({
-          //   url: tabindex == 1
-          //     ? `/v1/tcm/drug`
-          //     : `/v1/tcm/prescription`,
-          //   type: 'POST',
-          //   data,
-          //   success: res => {
-          //     this.setState({loading: false})
-          //     if (res.code == 0) {
-          //       hashHistory.go(-1)
-          //     } else {
-          //       message.error(res.message)
-          //     }
-          //   }
-          // })
-        }
-      });
+      const {number, fee, accountList} = this.state
+      data.amount = number * 100
+      const item = accountList.find(i => i.id == data.id)
+      data.bankNo = item.bankNo
+      data.cardName = item.cardName
+      data.cardNum = item.cardNum
+      delete data.id
+      this.data = data
+      this.setState({visible: true})
     })
   },
+  hideModal(type) {
+    if (type != 1) {
+      this.setState({visible: false})
+      return
+    }
+    let password = document.querySelector('#pwd').value
+    if (password == '') {
+      message.warn('请填写支付密码')
+      return
+    }
+    this.setState({loading: true})
+    this.data.password = password
+    ajax({
+      url: `/pay/withdrawbank`,
+      type: 'POST',
+      data: this.data,
+      success: res => {
+        if (res.code == 0) {
+          message.success(res.message)
+          this.setState({visible: false})
+          this.getMoney()
+        } else {
+          message.error(res.message)
+        }
+        setTimeout(() => {
+          this.setState({loading: false})
+        }, 1000)
+      }
+    })
+  },
+  chargeMoney(e) {
+    let number = parseInt(e.target.value || 0, 10);
+    let {balance} = this.state.result
+    balance = balance / 100
+    if (isNaN(number))
+      return
+    if (number > balance) {
+      number = balance
+      message.warn('超出您的账户余额')
+    }
+    if (number > 5000) {
+      number = 50000
+      message.warn('最高金额5万')
+    }
+
+    let fee = (number / 1000).toFixed(2)
+    if (fee < 1)
+      fee = 1
+    if (fee > 25)
+      fee = 25
+    this.setState({fee, number})
+  },
   render() {
-    const {loading, accountList} = this.state
+    const {
+      loading,
+      result,
+      accountList,
+      fee,
+      number,
+      visible
+    } = this.state
     const {getFieldDecorator} = this.props.form
     return (<div>
+      <Modal width='420' title={null} confirmLoading={loading} visible={visible} onOk={this.hideModal.bind(this, 1)} onCancel={this.hideModal.bind(this, 2)} okText="提现" cancelText="取消">
+        <div style={{
+            fontSize: '18px',
+            paddingLeft: '4px'
+          }}>确认提现?</div>
+        <div className='cashcfm'>
+          <h4 className='cred'>￥{number + Number(fee)}</h4>
+          <p>（实际到账{number}元，提现手续费{fee}元）</p>
+          <p><Input id='pwd' type='password' style={{
+        width: '80%',
+        marginTop: '20px',
+        marginLeft: '10px'
+      }} placeholder='填写支付密码'/></p>
+        </div>
+      </Modal>
       <div className='text-center' style={{
           paddingBottom: '100px'
         }}>
@@ -136,7 +172,7 @@ let Demo = React.createClass({
           <p className='cred' style={{
               fontSize: '30px'
             }}>
-            <b>300,000</b>
+            <b>{unitMoney(result.balance)}</b>
           </p>
           <p>
             <ul>
@@ -154,46 +190,41 @@ let Demo = React.createClass({
             }}>
             <FormItem {...formItemLayout} label="提现银行卡">
               {
-                getFieldDecorator('bank', {
+                getFieldDecorator('id', {
                   rules: [
                     {
                       required: true,
-                      message: '必填'
+                      message: '请选择提现的银行卡'
                     }
                   ]
                 })(<Select style={{
-                    width: '220px'
+                    width: '300px'
                   }} placeholder='请选择提现的银行卡'>
                   {
-                    accountList.map(item =>< Option value = {
-                      item.id
-                    } > {
-                      item.name
-                    }</Option>)
+                    accountList.map(item => {
+                      return <Option value={item.id}>{item.bankName}
+                        - {item.cardName}（{item.cardNum.slice(-4)}）</Option>
+                    })
                   }
                 </Select>)
               }
             </FormItem>
             <FormItem {...formItemLayout} label="提现金额￥">
               {
-                getFieldDecorator('name', {
+                getFieldDecorator('amount', {
                   rules: [
                     {
                       required: true,
-                      message: '必填'
-                    },
-                    // {
-                    //   type: 'number',
-                    //   message: '请输入正确的金额'
-                    // }
+                      message: '请输入提现的金额'
+                    }
                   ]
                 })(<div>
-                  <Input placeholder="请输入提现的金额" style={{
-                      width: '220px'
+                  <Input value={number} onChange={this.chargeMoney.bind(this)} placeholder="请输入提现的金额" style={{
+                      width: '300px'
                     }}/>
-                  <span style={{
-                      marginLeft: '20px'
-                    }} className='cblue'>手续费￥：1</span>
+                  <div className='cred' style={{
+                      paddingLeft: '6px'
+                    }}>手续费￥：{fee}</div>
                 </div>)
               }
             </FormItem>
@@ -213,9 +244,19 @@ let Demo = React.createClass({
 });
 let Account = React.createClass({
   getInitialState() {
-    return {
-      loading: false
-    };
+    return {loading: false, bankList: []};
+  },
+  componentWillMount() {
+    ajax({
+      url: '/v1/bankcard/supportbank',
+      success: res => {
+        if (res.result && res.result.length > 0) {
+          this.setState({bankList: res.result})
+        } else {
+          message.warn('请先添加银行卡')
+        }
+      }
+    })
   },
   handleSubmit(e) {
     e.preventDefault();
@@ -223,15 +264,31 @@ let Account = React.createClass({
       if (!!errors)
         return
       let data = this.props.form.getFieldsValue();
+      data.adminUserId = localStorage.userId
+      data.bankName = this.state.bankList.find(item => item.bankNo == data.bankNo).bankName
+      console.log(data);
+      ajax({
+        url: '/v1/bankcard/addbankcard',
+        type: 'POST',
+        data,
+        success: res => {
+          if (res.code == 0) {
+            message.success(res.message)
+            this.props.handle(1)
+          } else {
+            message.error(res.message)
+          }
+        }
+      })
     })
   },
   render() {
-    const {loading} = this.state
+    const {loading, bankList} = this.state
     const {getFieldDecorator} = this.props.form
     return (<Form onSubmit={this.handleSubmit}>
       <FormItem {...formItemLayout} label="持卡人">
         {
-          getFieldDecorator('name', {
+          getFieldDecorator('cardName', {
             rules: [
               {
                 required: true,
@@ -243,7 +300,7 @@ let Account = React.createClass({
       </FormItem>
       <FormItem {...formItemLayout} label="银行卡号">
         {
-          getFieldDecorator('nameka', {
+          getFieldDecorator('cardNum', {
             rules: [
               {
                 required: true,
@@ -255,7 +312,7 @@ let Account = React.createClass({
       </FormItem>
       <FormItem {...formItemLayout} label="选择银行">
         {
-          getFieldDecorator('bank', {
+          getFieldDecorator('bankNo', {
             rules: [
               {
                 required: true,
@@ -265,9 +322,9 @@ let Account = React.createClass({
           })(<Select placeholder='请选择银行'>
             {
               bankList.map(item =>< Option value = {
-                item.value
+                item.bankNo
               } > {
-                item.text
+                item.bankName
               }</Option>)
             }
           </Select>)
@@ -295,8 +352,21 @@ export default class form extends Component {
     this.state = {
       visible: false,
       type: 1,
-      commentData: addData()
+      accountList: []
     }
+  }
+  componentWillMount() {
+    this.getMyBank()
+  }
+  getMyBank() {
+    ajax({
+      url: '/v1/bankcard/currentuserall',
+      success: res => {
+        if (res.result) {
+          this.setState({accountList: res.result})
+        }
+      }
+    })
   }
   showModal() {
     this.setState({visible: true})
@@ -305,57 +375,60 @@ export default class form extends Component {
     if (this.state.type == 2) {
       this.setState({type: 1})
     } else {
+      // this.refs.bankcash.updateok();
       this.setState({visible: false})
     }
   }
   accountDel(type, item) {
     if (type == 0) {
+      let _this = this
       confirm({
-        title: '确定要删除当前账户?',
-        content: '中国银行（8430）',
+        title: '确定要删除当前银行卡?',
+        content: `${item.bankName} - ${item.cardName} (${item.cardNum.slice(-4)})`,
         onOk() {
-          // ajax({
-          //   url: tabindex == 1
-          //     ? `/v1/tcm/drug`
-          //     : `/v1/tcm/prescription`,
-          //   type: 'POST',
-          //   data,
-          //   success: res => {
-          //     this.setState({loading: false})
-          //     if (res.code == 0) {
-          //       hashHistory.go(-1)
-          //     } else {
-          //       message.error(res.message)
-          //     }
-          //   }
-          // })
+          ajax({
+            url: `/v1/bankcard/removebankcard/${item.id}`,
+            type: 'DELETE',
+            success: res => {
+              if (res.code == 0) {
+                message.success(res.message)
+                _this.getMyBank();
+              } else {
+                message.error(res.message)
+              }
+            }
+          })
         }
       });
     } else {
       this.setState({type: 2})
     }
   }
+  handle(data) {
+    this.getMyBank();
+    this.setState({type: 1})
+  }
   render() {
-    const {visible, commentData, type} = this.state
+    const {visible, accountList, type} = this.state
     return (<div className='tbdetail overhidden'>
       <div className='text-right' style={{
           marginBottom: '20px'
         }}>
         <Button onClick={this.showModal.bind(this)}>管理银行卡</Button>
       </div>
-      <Demo/>
+      <Demo ref='bankcash'/>
       <Modal visible={visible} title="银行卡管理" onCancel={this.hideModal.bind(this)} footer={null} width='400px'>
         {
           type == 1
             ? [
-              <List itemLayout="horizontal" size="large" dataSource={commentData} renderItem={item => (<List.Item actions={[
-                    <a title='删除' onClick={this.accountDel.bind(this, 0, item)}><Icon type="delete"/></a>,
-                    <a title='编辑' onClick={this.accountDel.bind(this, 1, item)}><Icon type="edit"/></a>
-                  ]}>
-                  <List.Item.Meta avatar={<Avatar size = 'large' src = "https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png" />} description={<ul > <li>民生银行</li>
+              <List itemLayout="horizontal" size="large" dataSource={accountList} renderItem={item => (<List.Item actions={[<a title='删除' onClick={this.accountDel.bind(this, 0, item)}><Icon type="delete"/></a>
+                    ]}>
+                  {/* <a title='编辑' onClick={this.accountDel.bind(this, 1, item)}><Icon type="edit"/></a> */}
+
+                  <List.Item.Meta avatar={<Avatar size = 'large' src = "https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png" />} description={<ul > <li>{item.bankName}</li>
                     <li className='clearfix'>
-                      <span className='left'>储蓄卡</span>
-                      <span className='right'>**** **** **** 5618</span>
+                      <span className='left'>{item.cardName}</span>
+                      <span className='right'>**** **** **** {item.cardNum.slice(-4)}</span>
                     </li>
                   </ul>}/>
                 </List.Item>)}/>,
@@ -367,7 +440,7 @@ export default class form extends Component {
                 添加新账户
               </Button>
             ]
-            : <Account/>
+            : <Account handle={this.handle.bind(this)}/>
         }
       </Modal>
     </div>)

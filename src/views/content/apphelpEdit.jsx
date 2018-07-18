@@ -100,6 +100,8 @@ let Demo = React.createClass({
           }}>
           <Button style={{
               marginRight: '10px'
+            }} onClick={() => {
+              hashHistory.go(-1)
             }}>取消</Button>
           <Button style={{
               marginRight: '10px'

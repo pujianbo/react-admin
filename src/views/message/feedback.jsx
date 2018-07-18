@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -29,16 +29,8 @@ export default class datalist extends Component {
     this.selectedRowName = '';
     this.tabIndex = 1;
     this.query = {
-      content: "",
-      endTime: "",
-      fbRole: "",
-      fbUser: "",
       pageIndex: 1,
-      pageSize: 10,
-      parameter: {},
-      startTime: "",
-      status: "",
-      type: "1"
+      pageSize: 10
     };
     this.state = {
       data: [],
@@ -51,7 +43,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -80,10 +75,9 @@ export default class datalist extends Component {
         render: (value, record) => roleList[record.status]
       }, {
         title: '反馈时间',
-        render: (value, record) => moment(record.lastLoginDate).format(format)
+        render: (value, record) => moment(record.subTime).format(format)
       }, {
         title: '反馈状态',
-        dataIndex: 'status',
         render: (value, record) => statusList[record.status]
       }, {
         title: '操作',
@@ -119,8 +113,10 @@ export default class datalist extends Component {
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.result, pagination})
+          this.setState({data: res.result.result, pagination,rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -136,10 +132,9 @@ export default class datalist extends Component {
       title: `您确定要${delType}以下记录吗?`,
       content: `选择项：${this.selectedRowName}`,
       onOk() {
-        let url = `/v1/opinion/batchopt`
+        let url = `/v1/opinion/ignoreopt`
         let type = 'PUT'
         let data = {
-          status: 0,
           ids: _this.selectedRowID
         }
         _this.mulDataHandle(url, type, data)
@@ -157,6 +152,7 @@ export default class datalist extends Component {
         if (res.code == 0) {
           message.success(res.message)
           this.getData(1);
+          this.setState({visible: false})
         } else {
           message.error(res.message)
         }
@@ -180,7 +176,6 @@ export default class datalist extends Component {
       : moment(time[1])
     this.query.startTime = startTime
     this.query.endTime = endTime
-    this.getData(1)
     this.getData(1)
   }
 
@@ -210,15 +205,20 @@ export default class datalist extends Component {
     }
     this.mulDataHandle(url, type, data)
   }
+
   replyVisi() {
     this.setState({visible: true})
   }
 
+  //重置数据
+  resetData() {
+    hashHistory.push('/goback')
+  }
   render() {
     const {data, pagination, visible, rowSelection, dltdisabled} = this.state
     return (<div>
       <Form className='frmbtntop text-right'>
-        <Button>重置</Button>
+        <Button onClick={this.resetData.bind(this)}>重置</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量忽略</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.replyVisi.bind(this)}>批量处理</Button>
       </Form>

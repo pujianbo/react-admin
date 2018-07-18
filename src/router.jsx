@@ -61,6 +61,11 @@ const login = (location, cb) => {
     cb(null, require('./views/login').default)
   }, 'login')
 }
+const goback = (location, cb) => {
+  require.ensure([], require => {
+    cb(null, require('./views/goback').default)
+  }, 'goback')
+}
 const pwdfind = (location, cb) => {
   require.ensure([], require => {
     cb(null, require('./views/pwdfind').default)
@@ -82,6 +87,11 @@ const datalog = (location, cb) => {
   require.ensure([], require => {
     cb(null, require('./views/system/datalog').default)
   }, 'datalog')
+}
+const profit = (location, cb) => {
+  require.ensure([], require => {
+    cb(null, require('./views/system/profit').default)
+  }, 'profit')
 }
 const version = (location, cb) => {
   require.ensure([], require => {
@@ -418,10 +428,11 @@ const apphelpDetail = (location, cb) => {
 }
 
 const RouteConfig = (<Router history={hashHistory}>
-  <Route path='/login' getComponent={login}/>
+  <Route path='/login(/:msg)' getComponent={login}/>
   <Route path='/pwdfind' getComponent={pwdfind}/>
   <Route path='/' getComponent={roots}>
     <IndexRoute getComponent={index}/>
+    <Route path='goback' getComponent={goback}/>
 
     <Route path='account/'>
       <IndexRoute getComponent={account}/>
@@ -439,7 +450,7 @@ const RouteConfig = (<Router history={hashHistory}>
       <Route path='feedback' getComponent={messageFeedback}/>
       <Route path='feedback/detail/:id' getComponent={feedbackDetail}/>
       <Route path='edit(/:id)' getComponent={messageEdit}/>
-      <Route path='detail/:id' getComponent={messageDetail}/>
+      <Route path='detail/:id(/:sign)' getComponent={messageDetail}/>
     </Route>
 
     <Route path='person/'>
@@ -453,10 +464,10 @@ const RouteConfig = (<Router history={hashHistory}>
         <IndexRoute getComponent={conclusion}/>
         <Route path='conclusion' getComponent={conclusion}/>
         <Route path='conclusion/edit(/:id)' getComponent={conclusionedit}/>
-        <Route path='conclusion/detail/:id' getComponent={conclusiondetail}/>
-        {/*<Route path='illness' getComponent={illnessWest}/>
+        <Route path='conclusion/detail/:id' getComponent={conclusiondetail}/> {/*<Route path='illness' getComponent={illnessWest}/>
         <Route path='illness/edit(/:id)' getComponent={illnesseditWest}/>
-        <Route path='illness/detail/:id' getComponent={illnesseditWestdetail}/>*/}
+        <Route path='illness/detail/:id' getComponent={illnesseditWestdetail}/>*/
+        }
       </Route>
       <Route path='china/'>
         <IndexRoute getComponent={drug}/>
@@ -479,7 +490,7 @@ const RouteConfig = (<Router history={hashHistory}>
     <Route path='examine/'>
       <IndexRoute getComponent={doctorstation}/>
       <Route path='doctorstation' getComponent={doctorstation}/>
-      <Route path='doctorstation/detail/:id' getComponent={docStationDetail}/>
+      <Route path='doctorstation/detail/:type/:id' getComponent={docStationDetail}/>
       <Route path='report' getComponent={report}/>
       <Route path='report/detail/:id' getComponent={reportDetail}/>
     </Route>
@@ -494,7 +505,7 @@ const RouteConfig = (<Router history={hashHistory}>
       <IndexRoute getComponent={moneyBill}/>
       <Route path='bill' getComponent={moneyBill}/>
       <Route path='bill/detail/:type/:id' getComponent={billDetail}/>
-      <Route path='platform' getComponent={moneyPlatform}/>
+      <Route path='platform(/:type)' getComponent={moneyPlatform}/>
       <Route path='cash' getComponent={moneyCash}/>
       <Route path='doctor' getComponent={moneyDoctor}/>
       <Route path='doctor/detail/:id' getComponent={doctorDetail}/>
@@ -516,6 +527,7 @@ const RouteConfig = (<Router history={hashHistory}>
       <Route path='version' getComponent={version}/>
       <Route path='feedback' getComponent={feedback}/>
       <Route path='datalog' getComponent={datalog}/>
+      <Route path='profit' getComponent={profit}/>
     </Route>
 
     <Route path='team/'>

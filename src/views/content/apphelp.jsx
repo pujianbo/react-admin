@@ -19,7 +19,7 @@ import {validStr} from '../../tools'
 const {RangePicker} = DatePicker;
 const FormItem = Form.Item;
 const Option = Select.Option;
-const stateList = ['全部', '已发布', '草稿']
+const stateList = ['全部', '已发布', '草稿', '屏蔽']
 export default class datalist extends Component {
   constructor() {
     super();
@@ -43,7 +43,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -66,7 +69,6 @@ export default class datalist extends Component {
         render: (value, record) => moment(record.createTime).format(format)
       }, {
         title: '问题状态',
-        dataIndex: 'status',
         render: (value, record) => stateList[record.state]
       }, {
         title: '操作',
@@ -95,14 +97,17 @@ export default class datalist extends Component {
       pagination.current = newpage;
     const {current, pageSize} = pagination
     console.log(pagination);
+    this.query.pageIndex = current
     ajax({
       url: `/useManual/getuseManualList`,
       type: 'POST',
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -118,17 +123,14 @@ export default class datalist extends Component {
       title: `您确定要${delType}以下记录吗?`,
       content: `选择项：${this.selectedRowName}`,
       onOk() {
-        let url = `/user/batch-del`
-        let type = 'DELETE'
+        let url = `/useManual/batchShield`
+        let type = 'POST'
         let data = {
-          ids: _this.selectedRowID
+          ids: _this.selectedRowID,
+          status: 2
         }
-        if (delType.indexOf('删除') == -1) {
-          url = `/user/batch-operate`;
-          type = 'POST';
-          data.status = delType.indexOf('解冻') > -1
-            ? 1
-            : 2
+        if (delType.indexOf('删除') > -1) {
+          url = `/useManual/batchDel`;
         }
         _this.mulDataHandle(url, type, data)
       }
@@ -191,15 +193,24 @@ export default class datalist extends Component {
   //文件上传
   uploadFile(file, fileList) {
     let data = new FormData();
-    data.append('tempFile', file);
+    data.append('authFile', file);
     uploadFile({
-      url: '/stdbiocheck/batchAddStdbiocheck',
+      url: '/v1/import/exceltousemanual',
       data
     }, (res) => {
       if (res.code == 0) {
-        const {total, failcount} = res.result
-        message.success(`共计${total}数据；导入成功（${total - failcount}） 导入失败（${failcount}）`)
-        this.setState({visible: false})
+        const {total, failcount, faillist} = res.result
+        if (failcount > 0) {
+          Modal.error({
+            title: '批量操作温馨提示：', content: <div>
+                <p>共计数据{total}条；成功：{total - failcount}条、失败：{failcount}条</p>
+                <p>失败项：<br/>{faillist.join('，')}</p>
+              </div>
+          });
+        } else {
+          message.success(`成功导入数据：${total}条`)
+        }
+        this.setState({visible: false, renzhen: false})
         this.getData(1)
       } else {
         message.error(res.message)
@@ -295,13 +306,13 @@ export default class datalist extends Component {
       <Modal visible={visible} title="批量发布" onCancel={this.handleCancel.bind(this)} footer={null}>
         <Form>
           <FormItem {...formItemLayout} label="下载模板">
-            <Button href='http://tederenoss.oss-cn-beijing.aliyuncs.com/kys/%E7%94%A8%E6%88%B7%E6%89%B9%E9%87%8F%E5%AF%BC%E5%85%A5%E6%A8%A1%E6%9D%BF.xlsx'>下载模板</Button>
+            <Button href={excelUrl + '/access/APP%E4%BD%BF%E7%94%A8%E6%89%8B%E5%86%8C%E6%A8%A1%E6%9D%BF.xlsx'}>下载模板</Button>
             <span className='cgreen' style={{
                 marginLeft: '10px'
               }}>(请务必按模板格式填写)</span>
           </FormItem>
           <FormItem {...formItemLayout} label="上传传模板">
-            <Upload beforeUpload={this.uploadFile.bind(this)}>
+            <Upload beforeUpload={this.uploadFile.bind(this)} accept={excelType} fileList={[]} >
               <Button>
                 <Icon type="upload"/>
                 选择文件

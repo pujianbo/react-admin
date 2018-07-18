@@ -220,7 +220,7 @@ export default class datalist extends Component {
       <Modal visible={visible} title="发布版本" onCancel={this.handleCancel.bind(this)} confirmLoading={loading} onOk={this.handleOk.bind(this)}>
         <Form onSubmit={this.handleOk.bind(this)}>
           <FormItem {...formItemLayout} label="上传文件">
-            <Upload beforeUpload={this.uploadApk.bind(this)}>
+            <Upload beforeUpload={this.uploadApk.bind(this)} >
               <Button>选择文件</Button>
             </Upload>
           </FormItem>

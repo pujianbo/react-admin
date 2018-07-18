@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -11,23 +11,27 @@ import {
   Col,
   Icon,
   Select,
-  Tabs,
-  Upload,
+  Radio,
   message
 } from 'antd';
 import moment from 'moment';
-import {validStr} from '../../tools'
 const {RangePicker} = DatePicker;
-const TabPane = Tabs.TabPane;
+const RadioGroup = Radio.Group;
 const FormItem = Form.Item;
 const Option = Select.Option;
+const typeList = ['用户', '评论']
+const statusList = ['忽略', '待处理', '已处理']
 export default class datalist extends Component {
   constructor() {
     super();
+    this.day = 1;
     this.selectedRowID = '';
     this.selectedRowName = '';
     this.tabIndex = 1;
-    this.query = {};
+    this.query = {
+      pageIndex: 1,
+      pageSize: 10
+    };
     this.state = {
       loading: false,
       data: [],
@@ -40,14 +44,17 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
           let sltname = ''
           selectedRows.map(item => {
             sltid.push(item.id)
-            sltname += item.nickname + ','
+            sltname += item.toNickname + ','
           })
           this.selectedRowID = sltid;
           this.selectedRowName = sltname.slice(0, -1);
@@ -57,23 +64,24 @@ export default class datalist extends Component {
     this.columns = [
       {
         title: '被举报人',
-        dataIndex: 'nickname'
+        render: (value, record) => record.type == 1
+          ? (record.review || record.forwardReview || record.noticeReview || {}).nickname
+          : record.toNickname
       }, {
         title: '举报类型',
-        dataIndex: 'phone'
+        render: (value, record) => typeList[record.type]
       }, {
         title: '被举报内容',
-        render: (value, record) => '无'
+        dataIndex: 'content'
       }, {
         title: '举报人',
-        render: (value, record) => '无'
+        dataIndex: 'fromNickname'
       }, {
         title: '举报时间',
-        dataIndex: 'lastLoginDate',
-        render: (value, record) => moment(record.lastLoginDate).format(format)
+        render: (value, record) => moment(record.createDate).format(format)
       }, {
         title: '处理状态',
-        render: (value, record) => '无'
+        render: (value, record) => statusList[record.status]
       }, {
         title: '操作',
         key: 'id',
@@ -94,102 +102,60 @@ export default class datalist extends Component {
     this.setState({pagination})
     this.getData(pagination.current);
   }
+
   //获取列表
   getData(newpage) {
     let {pagination} = this.state
     if (newpage)
       pagination.current = newpage;
     const {current, pageSize} = pagination
-    console.log(pagination);
+    this.query.pageIndex = current
     ajax({
-      url: `/user/list-parameter?pageIndex=${current}&pageSize=${pageSize}`,
+      url: `/report/query`,
       type: 'POST',
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
       }
     })
   }
-
-  //单个编辑
-  edit(value, typeName) {
-    let _this = this;
-    Modal.confirm({
-      title: `您确定要${typeName}以下记录吗?`,
-      content: `昵称：${value.nickname}`,
-      onOk() {
-        if (typeName == '删除') {
-          ajax({
-            url: `/user/del/${value.id}`,
-            type: 'DELETE',
-            success: res => {
-              if (res.code == 0) {
-                message.success(res.message)
-                _this.getData(1);
-              } else {
-                message.error(res.message)
-              }
-            }
-          })
-        } else {
-          let url = `/user/batch-operate`;
-          let type = 'POST';
-          let data = {
-            ids: [value.id],
-            status: typeName.indexOf('解冻') > -1
-              ? 1
-              : 2
-          }
-          _this.mulDataHandle(url, type, data)
-        }
-      }
-    });
-  }
-
-  //文件上传
-  uploadFile(file, fileList) {
-    let data = new FormData();
-    data.append('tempFile', file);
-    uploadFile({
-      url: '/user/batch-insert',
-      data
-    }, (res) => {
-      if (res.code == 0) {
-        const {total, failcount} = res.result
-        message.success(`共计${total}数据；导入成功（${total - failcount}） 导入失败（${failcount}）`)
-        this.setState({visible: false})
-        this.getData(1)
-      } else {
-        message.error(res.message)
-      }
-    })
-    return false
+  sltDay(e) {
+    this.day = e.target.value.slice(0, 1)
   }
 
   //批量操作
   handleSlt(e) {
+    const plainOptions = ['1天', '3天', '5天'];
     const delType = e.target.innerText;
     let _this = this;
     Modal.confirm({
-      title: `您确定要${delType}以下记录吗?`,
-      content: `选择项：${this.selectedRowName}`,
+      title: `您确定要${delType}以下记录吗?`, content: <div>选择项：{this.selectedRowName}{
+          delType.indexOf('冻结') > -1
+            ? <div style={{
+                  marginTop: '10px'
+                }}>冻结天数：<RadioGroup options={plainOptions} defaultValue={plainOptions[0]} onChange={this.sltDay.bind(this)}/></div>
+            : null
+        }</div>,
       onOk() {
-        let url = `/user/batch-del`
-        let type = 'DELETE'
+        let url = `/report/operation`
+        let type = 'POST'
         let data = {
-          ids: _this.selectedRowID
+          ids: _this.selectedRowID,
+          type: 0 //0 忽略 1 删除评论 2 冻结账号
         }
-        if (delType.indexOf('删除') == -1) {
-          url = `/user/batch-operate`;
-          type = 'POST';
-          data.status = delType.indexOf('解冻') > -1
-            ? 1
-            : 2
+        if (delType.indexOf('删除') > -1) {
+          data.type = 1
+        } else if (delType.indexOf('冻结') > -1) {
+          data.type = 2
+          data.dayNum = _this.day
+          data.freeze = '非法操作'
         }
         _this.mulDataHandle(url, type, data)
       }
@@ -214,8 +180,8 @@ export default class datalist extends Component {
   }
 
   //选择状态
-  sltStatus(value) {
-    this.query.status = value
+  sltStatus(name, value) {
+    this.query[name] = value
     this.getData(1)
   }
 
@@ -227,13 +193,9 @@ export default class datalist extends Component {
     const endTime = time.length == 0
       ? ''
       : moment(time[1])
-    if (type == 0) { //创建时间
-      this.query.startDate = startTime
-      this.query.endDate = endTime
-    } else { //登录时间
-      this.query.loginStartDate = startTime
-      this.query.loginendDate = endTime
-    }
+    this.query.reportDateStart = startTime
+    this.query.reportDateEnd = endTime
+
     this.getData(1)
   }
 
@@ -243,63 +205,11 @@ export default class datalist extends Component {
     this.getData(1)
   }
 
-  //新建记录
-  addAccount() {
-    this.setState({visible: true})
+  //重置数据
+  resetData() {
+    hashHistory.push('/goback')
   }
-
-  handleCancel() {
-    this.setState({visible: false})
-  }
-
-  handleOk(e) {
-    e.preventDefault();
-    if (this.tabIndex == 1) {
-      const phone = $('#phone').val();
-      if (!validStr('phone', phone)) {
-        message.warning('请正确填写手机号')
-        return
-      }
-      ajax({
-        url: '/user/insertOne',
-        type: 'POST',
-        data: phone,
-        success: res => {
-          if (res.code == 0) {
-            this.setState({visible: false})
-            $('#phone').val('');
-            this.getData(1);
-          } else {
-            message.error(res.message)
-          }
-        }
-      })
-    }
-  }
-
-  tabChange(key) {
-    this.tabIndex = key
-  }
-
   render() {
-    const formItemLayout = {
-      labelCol: {
-        xs: {
-          span: 24
-        },
-        sm: {
-          span: 4
-        }
-      },
-      wrapperCol: {
-        xs: {
-          span: 24
-        },
-        sm: {
-          span: 16
-        }
-      }
-    };
     const {
       data,
       pagination,
@@ -310,47 +220,61 @@ export default class datalist extends Component {
     } = this.state
     return (<div>
       <Form className='frmbtntop text-right'>
-        <Button>重置</Button>
-        <Button type="danger" disabled={dltdisabled}>批量忽略</Button>
-        <Button type="danger" disabled={dltdisabled}>批量处理</Button>
+        <Button onClick={this.resetData.bind(this)}>重置</Button>
+        <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量忽略</Button>
+        <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量冻结</Button>
+        <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量删除</Button>
       </Form>
       <Form layout="inline" className='frminput'>
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="被举报人">
-              <Input placeholder='被举报人' onChange={this.getValue.bind(this, 'nickname')} style={{width: '220px'}}/>
+              <Input placeholder='被举报人' onChange={this.getValue.bind(this, 'toNickname')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="举报类型">
-              <Select defaultValue="" onChange={this.sltStatus.bind(this)} style={{width: '220px'}}>
+              <Select defaultValue="" onChange={this.sltStatus.bind(this, 'type')} style={{
+                  width: '220px'
+                }}>
                 <Option value="">全部</Option>
-                <Option value="0">评论</Option>
-                <Option value="1">用户</Option>
+                {
+                  typeList.map((item, index) => {
+                    return <Option value={index}>{item}</Option>
+                  })
+                }
               </Select>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="举报人">
-              <Input placeholder='举报人' onChange={this.getValue.bind(this, 'nickname')} style={{width: '220px'}}/>
+              <Input placeholder='举报人' onChange={this.getValue.bind(this, 'fromNickname')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
         </Row>
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="举报时间">
-              <RangePicker onChange={this.sltTime.bind(this, 1)} style={{
+              <RangePicker onChange={this.sltTime.bind(this)} style={{
                   width: '220px'
                 }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="处理状态">
-              <Select defaultValue="" onChange={this.sltStatus.bind(this)} style={{width: '220px'}}>
+              <Select defaultValue="" onChange={this.sltStatus.bind(this, 'status')} style={{
+                  width: '220px'
+                }}>
                 <Option value="">全部</Option>
-                <Option value="0">待处理</Option>
-                <Option value="1">已处理</Option>
-                <Option value="2">忽略</Option>
+                {
+                  statusList.map((item, index) => {
+                    return <Option value={index}>{item}</Option>
+                  })
+                }
               </Select>
             </FormItem>
           </Col>

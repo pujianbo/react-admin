@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -14,37 +14,54 @@ import {
 } from 'antd';
 import moment from 'moment';
 const {RangePicker} = DatePicker;
+import {unitMoney} from '../../tools'
 const FormItem = Form.Item;
 const Option = Select.Option;
 const start = "1970-01-01 00:00:00";
 const stop = "2099-01-01 00:00:00";
 const billStatus = [
+  '全部',
+  '零钱充值',
   '问诊',
-  '智检报告解锁',
+  '红包',
+  '质检报告解锁',
   '用药解锁',
   '单位购买规模',
   '单位购买话题',
-  '单位购买文件',
   '单位购买通知',
-  '零钱充值',
+  '单位购买文件',
   '退款',
-  '红包',
   '提现'
 ]
-const payWay = ['支付宝', '微信', '苹果', '零钱', '银行卡']
+const payWay = [
+  '全部',
+  '支付宝',
+  '微信',
+  '零钱',
+  '苹果',
+  '银行卡'
+]
+const billTypes = ['提现', '收入', '支出']
+const methodList = ['全部', '收入', '支出']
 export default class datalist extends Component {
-  constructor() {
-    super();
-    this.selectedRowID = '';
-    this.selectedRowName = '';
+  constructor(props) {
+    super(props);
+    const {type, from} = this.props.location.query
     this.query = {
-      name: '',
-      status: -1,
-      start,
-      stop
+      pageIndex: 1,
+      pageSize: 10
     };
+    if (from) {
+      this.billmore = true
+      this.query.type = Number(type)
+      if (from == 1) {
+        this.query.hosId = localStorage.hospitalId
+      }
+    }
+
     this.state = {
       loading: false,
+      dltdisabled: true,
       data: [],
       pagination: {
         current: 1,
@@ -52,49 +69,50 @@ export default class datalist extends Component {
         total: 1
       },
       rowSelection: {
+        selectedRowKeys: [],
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
-          let sltname = ''
           selectedRows.map(item => {
-            sltid.push(item.id)
-            sltname += item.title + ','
+            sltid.push(item.out_trade_no)
           })
           this.selectedRowID = sltid;
-          this.selectedRowName = sltname.slice(0, -1);
+          return true
         }
       }
     };
     this.columns = [
       {
         title: '账单号',
-        dataIndex: 'title'
+        dataIndex: 'out_trade_no'
       }, {
         title: '付款方',
-        dataIndex: 'name'
+        dataIndex: 'nickname'
       }, {
         title: '收款方',
-        dataIndex: 'doc'
+        dataIndex: 'payeeName'
       }, {
         title: '账单金额￥',
-        dataIndex: '45.90'
+        render: (record) => <span className={record.method==1?'cred':'cgreen'}>{[, '+', '-'][record.method] + unitMoney(record.amount)}</span>
       }, {
         title: '账单类型',
-        render: (value, record) => billStatus[2]
+        render: (record) => `${billStatus[record.type]}（${ ['申请中', '已完成'][record.status]}）`
       }, {
         title: '交易方式',
-        render: (value, record) => payWay[2]
+        render: (record) => payWay[record.channel]
       }, {
         title: '创建时间',
-        dataIndex: 'cteateDate',
-        render: (value, record) => moment(record.createTime).format(format)
+        render: (record) => moment(record.createDate).format(format)
       }, {
         title: '操作',
         key: 'id',
-        render: (value, record, index) => {
-          return <Link title='详情' to={`/money/bill/detail/${index + 1}/${record.id}`}><Icon type="exclamation-circle-o"/></Link>
+        render: (record, index) => {
+          return <Link title='详情' to={`/money/bill/detail/${record.status}/${record.out_trade_no}`}><Icon type="exclamation-circle-o"/></Link>
         }
       }
     ];
@@ -116,15 +134,23 @@ export default class datalist extends Component {
     if (newpage)
       pagination.current = newpage;
     const {current, pageSize} = pagination
-    console.log(pagination);
+    this.query.pageIndex = current
     ajax({
-      url: `/v1/tcm/healthcaresuggests?pageIndex=${current}&pageSize=${pageSize}&parameter=${encodeURI(JSON.stringify(this.query))}`,
-      type: 'GET',
-      // data: this.query,
+      url: `/financialManage/${this.billmore
+        ? 'queryFinancialInfo'
+        : 'billList'}`,
+      type: 'POST',
+      data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({
+            data: res.result.list || res.result.List,
+            pagination,
+            rowSelection
+          })
         } else {
           // message.error(res.message)
         }
@@ -152,103 +178,141 @@ export default class datalist extends Component {
     const endTime = time.length == 0
       ? stop
       : moment(time[1]).format(format)
-    this.query.start = startTime
-    this.query.stop = endTime
+    this.query.createDateStart = startTime
+    this.query.createDateEnd = endTime
     this.getData(1)
   }
 
   //重置数据
   resetData() {
-    console.log('resetData');
+    hashHistory.push('/goback')
+  }
+
+  //保存Excel
+  saveExcel() {
+    this.setState({loading: true})
+    ajaxBlob({
+      url: '/financialManage/exportData',
+      filename: `账单列表_${moment().format('MM月DD日HH时mm时ss分')}.xls`,
+      data: {
+        ids: this.selectedRowID
+      }
+    }, res => {
+      this.setState({loading: false})
+    })
   }
 
   render() {
-    const {data, pagination, loading, rowSelection} = this.state
+    const {data, pagination, loading, dltdisabled, rowSelection} = this.state
+    const {type} = this.props.location.query
     return (<div>
       <Form className='frmbtntop text-right'>
         <Button onClick={this.resetData.bind(this)}>重置</Button>
-        <Button>导出</Button>
+        <Button disabled={dltdisabled} onClick={this.saveExcel.bind(this)} loading={loading}>导出</Button>
       </Form>
       <Form layout="inline" className='frminput' id='lbl5'>
-        <Row gutter={8}>
-          <Col span={8}>
-            <FormItem label="账单号">
-              <Input placeholder='搜索账单号' onChange={this.getValue.bind(this, 'name')} style={{
-                  width: '220px'
-                }}/>
-            </FormItem>
-          </Col>
-          <Col span={8}>
-            <FormItem label="付款方">
-              <Input placeholder='搜索付款方昵称或手机号' onChange={this.getValue.bind(this, 'name')} style={{
-                  width: '220px'
-                }}/>
-            </FormItem>
-          </Col>
-          <Col span={8}>
-            <FormItem label="收款方">
-              <Input placeholder='搜索收款方昵称或手机号' onChange={this.getValue.bind(this, 'name')} style={{
-                  width: '220px'
-                }}/>
-            </FormItem>
-          </Col>
-        </Row>
-        <Row gutter={8}>
-          <Col span={8}>
-            <FormItem label="收支类型">
-              <Select defaultValue="-1" onChange={this.sltStatus.bind(this, 'status')} style={{
-                  width: '220px'
-                }}>
-                <Option value="-1">全部</Option>
-                <Option value="2">支出</Option>
-                <Option value="1">收入</Option>
-              </Select>
-            </FormItem>
-          </Col>
-          <Col span={8}>
-            <FormItem label="账单类型">
-              <Select defaultValue="-1" onChange={this.sltStatus.bind(this, 'status')} style={{
-                  width: '220px'
-                }}>
-                <Option value="-1">全部</Option>
-                {
-                  billStatus.map(item =>< Option value = {
-                    item
-                  } > {
-                    item
-                  }</Option>)
-                }
-              </Select>
-            </FormItem>
-          </Col>
-          <Col span={8}>
-            <FormItem label="交易方式">
-              <Select defaultValue="-1" onChange={this.sltStatus.bind(this, 'status')} style={{
-                  width: '220px'
-                }}>
-                <Option value="-1">全部</Option>
-                {
-                  payWay.map(item =>< Option value = {
-                    item
-                  } > {
-                    item
-                  }</Option>)
-                }
-              </Select>
-            </FormItem>
-          </Col>
-        </Row>
-        <Row gutter={8}>
-          <Col span={8}>
-            <FormItem label="创建时间">
-              <RangePicker onChange={this.sltTime.bind(this)} style={{
-                  width: '220px'
-                }}/>
-            </FormItem>
-          </Col>
-        </Row>
+        {
+          type
+            ? <Row gutter={8}>
+                <Col span={8}>
+                  <FormItem label="账单类型">
+                    <Select defaultValue={Number(type)} onChange={this.sltStatus.bind(this, 'type')} style={{
+                        width: '220px'
+                      }}>
+                      {
+                        billTypes.map((item, index) => {
+                          return <Option value={index}>{item}</Option>
+                        })
+                      }
+                    </Select>
+                  </FormItem>
+                </Col>
+                <Col span={8}>
+                  <FormItem label="创建时间">
+                    <RangePicker onChange={this.sltTime.bind(this)} style={{
+                        width: '220px'
+                      }}/>
+                  </FormItem>
+                </Col>
+              </Row>
+            : [
+              <Row gutter={8}>
+                <Col span={8}>
+                  <FormItem label="账单号">
+                    <Input placeholder='搜索账单号' onChange={this.getValue.bind(this, 'out_trade_no')} style={{
+                        width: '220px'
+                      }}/>
+                  </FormItem>
+                </Col>
+                <Col span={8}>
+                  <FormItem label="付款方">
+                    <Input placeholder='搜索付款方昵称或手机号' onChange={this.getValue.bind(this, 'drawee')} style={{
+                        width: '220px'
+                      }}/>
+                  </FormItem>
+                </Col>
+                <Col span={8}>
+                  <FormItem label="收款方">
+                    <Input placeholder='搜索收款方昵称或手机号' onChange={this.getValue.bind(this, 'payee')} style={{
+                        width: '220px'
+                      }}/>
+                  </FormItem>
+                </Col>
+              </Row>,
+              <Row gutter={8}>
+                <Col span={8}>
+                  <FormItem label="收支类型">
+                    <Select defaultValue={0} onChange={this.sltStatus.bind(this, 'method')} style={{
+                        width: '220px'
+                      }}>
+                      {
+                        methodList.map((item, index) => {
+                          return <Option value={index}>{item}</Option>
+                        })
+                      }
+                    </Select>
+                  </FormItem>
+                </Col>
+                <Col span={8}>
+                  <FormItem label="账单类型">
+                    <Select defaultValue={0} onChange={this.sltStatus.bind(this, 'type')} style={{
+                        width: '220px'
+                      }}>
+                      {
+                        billStatus.map((item, index) => {
+                          return <Option value={index}>{item}</Option>
+                        })
+                      }
+                    </Select>
+                  </FormItem>
+                </Col>
+                <Col span={8}>
+                  <FormItem label="交易方式">
+                    <Select defaultValue={0} onChange={this.sltStatus.bind(this, 'channel')} style={{
+                        width: '220px'
+                      }}>
+                      {
+                        payWay.map((item, index) => {
+                          return <Option value={index}>{item}</Option>
+                        })
+                      }
+                    </Select>
+                  </FormItem>
+                </Col>
+              </Row>,
+              <Row gutter={8}>
+                <Col span={8}>
+                  <FormItem label="创建时间">
+                    <RangePicker onChange={this.sltTime.bind(this)} style={{
+                        width: '220px'
+                      }}/>
+                  </FormItem>
+                </Col>
+              </Row>
+            ]
+        }
       </Form>
-      <Table columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
+      <Table rowSelection={rowSelection} columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
     </div>)
   }
 }

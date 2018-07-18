@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -20,6 +20,7 @@ const FormItem = Form.Item;
 const Option = Select.Option;
 const start = "1970-01-01 00:00:00";
 const stop = "2099-01-01 10:10:10";
+const statusList = ['草稿', '屏蔽', '正常']
 const formItemLayout = {
   labelCol: {
     xs: {
@@ -65,7 +66,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -97,7 +101,7 @@ export default class datalist extends Component {
         render: (value, record) => moment(record.createTime).format(format)
       }, {
         title: '展示状态',
-        render: (value, record) => ['删除', '屏蔽', '正常'][record.status]
+        render: (value, record) => statusList[record.status]
       }, {
         title: '操作',
         key: 'id',
@@ -139,8 +143,10 @@ export default class datalist extends Component {
       // data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -205,13 +211,11 @@ export default class datalist extends Component {
 
   //文件上传
   ajaxFile(file, fileList) {
-    return;
-    let url = '/doctor/batch-auth';
-    let name = 'authFile'
+    return
     let data = new FormData();
-    data.append(name, file);
+    data.append('authFile', file);
     uploadFile({
-      url: url + `?id=${localStorage.hospitalId}`,
+      url: `v1/import/exceltoprescription`,
       data
     }, (res) => {
       if (res.code == 0) {
@@ -277,7 +281,21 @@ export default class datalist extends Component {
 
   //重置数据
   resetData() {
-    console.log('resetData');
+    hashHistory.push('/goback')
+  }
+
+  //导出Excel
+  saveExcel() {
+    message.warn('暂无开通')
+    return
+    this.setState({loading: true})
+    ajaxBlob({
+      url: '/v1/import/exportsimilarcases',
+      type: 'GET',
+      filename: `中医自诊-中医疾病.xls`
+    }, () => {
+      this.setState({loading: false})
+    })
   }
 
   render() {
@@ -298,30 +316,38 @@ export default class datalist extends Component {
         <Button onClick={this.resetData.bind(this)}>重置</Button>
         <Button onClick={this.visiModal.bind(this)}>批量添加</Button>
         <Button href='#/medicine/china/illnesszh/edit'>添加</Button>
-        <Button>导出</Button>
+        <Button onClick={this.saveExcel.bind(this)} loading={loading}>导出</Button>
       </Form>
       <Form layout="inline" className='frminput' id='lbl5'>
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="中医疾病">
-              <Input placeholder='搜索中医疾病' onChange={this.getValue.bind(this, 'name')} style={{width: '220px'}}/>
+              <Input placeholder='搜索中医疾病' onChange={this.getValue.bind(this, 'name')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="主症状">
-              <Input placeholder='搜索主症状' onChange={this.getValue.bind(this, 'mainSymptomID')} style={{width: '220px'}}/>
+              <Input placeholder='搜索主症状' onChange={this.getValue.bind(this, 'mainSymptomID')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="子症状">
-              <Input placeholder='搜索子症状' onChange={this.getValue.bind(this, 'prescriptionCode')} style={{width: '220px'}}/>
+              <Input placeholder='搜索子症状' onChange={this.getValue.bind(this, 'prescriptionCode')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
         </Row>
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="用药">
-              <Input placeholder='搜索用药' onChange={this.getValue.bind(this, 'drug')} style={{width: '220px'}}/>
+              <Input placeholder='搜索用药' onChange={this.getValue.bind(this, 'drug')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
@@ -333,10 +359,15 @@ export default class datalist extends Component {
           </Col>
           <Col span={8}>
             <FormItem label="展示状态">
-              <Select defaultValue="-1" onChange={this.sltStatus.bind(this, 'status')} style={{width: '220px'}}>
+              <Select defaultValue="-1" onChange={this.sltStatus.bind(this, 'status')} style={{
+                  width: '220px'
+                }}>
                 <Option value="-1">全部</Option>
-                <Option value="2">正常</Option>
-                <Option value="1">屏蔽</Option>
+                {
+                  statusList.map((item, index) => {
+                    return <Option value={index}>{item}</Option>
+                  })
+                }
               </Select>
             </FormItem>
           </Col>
@@ -345,13 +376,13 @@ export default class datalist extends Component {
 
       <Modal visible={visible} title='批量添加' onCancel={this.handleCancel.bind(this)} footer={null}>
         <FormItem {...formItemLayout} label="下载模板">
-          <Button href='http://tederenoss.oss-cn-beijing.aliyuncs.com/kys/%E5%8C%BB%E7%94%9F%E6%89%B9%E9%87%8F%E8%AE%A4%E8%AF%81%E6%A8%A1%E6%9D%BF.xlsx'>下载模板</Button>
+          <Button href={excelUrl + '/access/%E4%B8%AD%E8%8D%AF%E6%96%B9%E6%A8%A1%E6%9D%BF.xlsx'}>下载模板</Button>
           <span className='cgreen' style={{
               marginLeft: '10px'
             }}>(请务必按模板格式填写)</span>
         </FormItem>
         <FormItem {...formItemLayout} label="上传文件">
-          <Upload beforeUpload={this.ajaxFile.bind(this)}>
+          <Upload beforeUpload={this.ajaxFile.bind(this)} accept={excelType} fileList={[]}>
             <Button>
               <Icon type="upload"/>
               选择文件

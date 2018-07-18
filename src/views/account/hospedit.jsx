@@ -22,7 +22,7 @@ const options = cityList()
 let hospId = null
 let Demo = React.createClass({
   getInitialState() {
-    return {loading: false, hospital: {}};
+    return {loading: false, hospital: {}, type: ''};
   },
   componentWillMount() {
     if (hospId)
@@ -30,7 +30,7 @@ let Demo = React.createClass({
         url: `/hospital/get/${hospId}`,
         async: false,
         success: res => {
-          if (res.code == 0) {
+          if (res.code == 0 && res.result) {
             this.setState({hospital: res.result.hospital})
           } else {
             message.error(res.message);
@@ -99,7 +99,10 @@ let Demo = React.createClass({
       })
     }
   },
-
+  sltType(type) {
+    console.log(type);
+    this.setState({type})
+  },
   ajaxSubmit(data) {
     ajax({
       url: `/hospital/${hospId
@@ -163,12 +166,12 @@ let Demo = React.createClass({
         }
       }
     };
-    const {loading, hospital} = this.state
+    const {loading, hospital,type} = this.state
     const {getFieldDecorator} = this.props.form
-    const ylDate = hospId
+    const ylDate = hospital.businessDescribe
       ? hospital.businessDescribe.split('~')
       : []
-    const yyDate = hospId
+    const yyDate = hospital.licenseDescribe
       ? hospital.licenseDescribe.split('~')
       : []
     return (<div className='tbdetail overhidden'>
@@ -237,7 +240,7 @@ let Demo = React.createClass({
                   message: '请选择医院地址'
                 }
               ],
-              initialValue: hospId
+              initialValue: hospital.address
                 ? hospital.address.split(';')[0].split(',')
                 : null
             })(<Cascader options={options} style={{
@@ -254,7 +257,7 @@ let Demo = React.createClass({
                   message: '请填写医院详细地址'
                 }
               ],
-              initialValue: hospId
+              initialValue: hospital.address
                 ? hospital.address.split(';')[1]
                 : null
             })(<Input placeholder='请填写详情地址' style={{
@@ -272,7 +275,7 @@ let Demo = React.createClass({
                 }
               ],
               initialValue: hospital.type
-            })(<Select placeholder='选择' style={{
+            })(<Select placeholder='选择' onChange={this.sltType.bind(this)} style={{
                 width: 80
               }}>
               {
@@ -383,13 +386,15 @@ let Demo = React.createClass({
         </FormItem>
         <FormItem {...formItemLayout} label="医院照片">
           {
-            getFieldDecorator('hospitalImg', {})(<Upload beforeUpload={this.sltFile.bind(this, 2)} defaultFileList={hospId
+            getFieldDecorator('hospitalImg', {})(<Upload accept="image/*" beforeUpload={this.sltFile.bind(this, 2)} defaultFileList={hospId
                 ? [
                   {
                     uid: 3,
                     name: '医院照片',
                     status: 'done',
-                    url: fileUrl + hospital.hospitalImg.place
+                    url: hospital.hospitalImg
+                      ? (fileUrl + hospital.hospitalImg.place)
+                      : null
                   }
                 ]
                 : null}>
@@ -403,7 +408,7 @@ let Demo = React.createClass({
         <FormItem>
           <div className='tbbar'>证照信息</div>
         </FormItem>
-        <FormItem {...formItemLayout} label="医疗许可证">
+        <FormItem {...formItemLayout} label="医疗机构执业许可证">
           {
             getFieldDecorator('business', {
               rules: [
@@ -415,13 +420,15 @@ let Demo = React.createClass({
               initialValue: hospId
                 ? true
                 : null
-            })(<Upload beforeUpload={this.sltFile.bind(this, 0)} defaultFileList={hospId
+            })(<Upload accept="image/*" beforeUpload={this.sltFile.bind(this, 0)} defaultFileList={hospId
                 ? [
                   {
                     uid: 1,
                     name: '医疗许可证图片',
                     status: 'done',
-                    url: fileUrl + hospital.businessImg.place
+                    url: hospital.businessImg
+                      ? (fileUrl + hospital.businessImg.place)
+                      : null
                   }
                 ]
                 : null}>
@@ -450,7 +457,8 @@ let Demo = React.createClass({
             })(<RangePicker/>)
           }
         </FormItem>
-        <FormItem {...formItemLayout} label="营业执照">
+        {type?
+        [<FormItem {...formItemLayout} label="营业执照">
           {
             getFieldDecorator('license', {
               rules: [
@@ -462,13 +470,15 @@ let Demo = React.createClass({
               initialValue: hospId
                 ? true
                 : null
-            })(<Upload beforeUpload={this.sltFile.bind(this, 1)} defaultFileList={hospId
+            })(<Upload accept="image/*" beforeUpload={this.sltFile.bind(this, 1)} defaultFileList={hospId
                 ? [
                   {
                     uid: 2,
                     name: '营业执照图片',
                     status: 'done',
-                    url: fileUrl + hospital.licenseImg.place
+                    url: hospital.licenseImg
+                      ? (fileUrl + hospital.licenseImg.place)
+                      : null
                   }
                 ]
                 : null}>
@@ -478,7 +488,7 @@ let Demo = React.createClass({
               </Button>
             </Upload>)
           }
-        </FormItem>
+        </FormItem>,
         <FormItem {...formItemLayout} label="有效时间">
           {
             getFieldDecorator('licenseDescribe', {
@@ -496,7 +506,7 @@ let Demo = React.createClass({
                 : null
             })(<RangePicker/>)
           }
-        </FormItem>
+        </FormItem>]:null}
         <FormItem {...tailFormItemLayout} style={{
             marginBottom: '100px'
           }}>

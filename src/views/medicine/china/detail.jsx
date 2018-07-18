@@ -2,6 +2,7 @@ import React, {Component} from 'react'
 import {Link} from 'react-router'
 import moment from 'moment'
 import {Checkbox, Button} from 'antd';
+import {positionList} from '../../../tools'
 
 export default class datalist extends Component {
   constructor() {
@@ -47,6 +48,13 @@ export default class datalist extends Component {
           let tbinfo = '';
           switch (Number(type)) {
             case 1:
+              if (Number(result.crowd) < 3) {
+                positionList({crowd: result.crowd}).then(posiList => {
+                  const posiName = posiList.find(item => item.code == result.position).name
+                  document.getElementById('posiName').innerHTML = posiName
+                })
+              }
+
               tbinfo = <table>
                 <colgroup span="1" className='tbtitle'/>
                 <tr>
@@ -55,11 +63,11 @@ export default class datalist extends Component {
                 </tr>
                 <tr>
                   <td>所属性别：</td>
-                  <td>{['女', '男', '儿童'][result.crowd]}</td>
+                  <td>{['女', '男', '儿童'][result.crowd] || '未知'}</td>
                 </tr>
                 <tr>
                   <td>所属部位：</td>
-                  <td>{result.position}</td>
+                  <td id='posiName'>未知</td>
                 </tr>
               </table>;
               break;
@@ -131,7 +139,11 @@ export default class datalist extends Component {
                 </tr>
                 <tr>
                   <td>有效期：</td>
-                  <td>{result.periodOfValidity?moment(result.periodOfValidity).format(format):null}</td>
+                  <td>{
+                      result.periodOfValidity
+                        ? moment(result.periodOfValidity).format(format)
+                        : null
+                    }</td>
                 </tr>
                 <tr>
                   <td>药理作用：</td>
@@ -257,7 +269,12 @@ export default class datalist extends Component {
                 </tr>
                 <tr>
                   <td>养生建议：</td>
-                  <td>{result.healthcaresuggest.title}（{result.healthcaresuggest.content}）</td>
+                  <td>
+                    <div>{result.healthcaresuggest.title}</div>
+                    <div dangerouslySetInnerHTML={{
+                        __html: result.healthcaresuggest.content
+                      }}></div>
+                  </td>
                 </tr>
               </table>;
               break;
@@ -309,10 +326,14 @@ export default class datalist extends Component {
                         <td>{['删除', '屏蔽', '正常'][result.status]}</td>
                       </tr>
                 }
-                <tr>
-                  <td>最近修改：</td>
-                  <td>{moment(result.createTime).format(format)}</td>
-                </tr>
+                {
+                  result.updateTime
+                    ? <tr>
+                        <td>最近修改：</td>
+                        <td>{moment(result.updateTime).format(format)}</td>
+                      </tr>
+                    : null
+                }
                 <tr>
                   <td>创建时间：</td>
                   <td>{moment(result.createTime).format(format)}</td>

@@ -39,7 +39,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -109,8 +112,10 @@ export default class datalist extends Component {
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -315,7 +320,7 @@ export default class datalist extends Component {
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量恢复</Button>
         <Button>重置</Button>
         <Button href='#/medicine/west/illness/edit'>添加</Button>
-        <Button>导出</Button>
+        <Button onClick={this.saveExcel.bind(this)} loading={saving}>导出</Button>
       </Form>
       <Form layout="inline" className='frminput'>
         <Row gutter={8}>

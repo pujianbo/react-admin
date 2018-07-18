@@ -96,6 +96,9 @@ let Demo = React.createClass({
         }
       })
   },
+  setType(status) {
+    this.status = status
+  },
   handleSubmit(e) {
     e.preventDefault();
     this.props.form.validateFields((errors, values) => {
@@ -103,7 +106,8 @@ let Demo = React.createClass({
         return
       let data = this.props.form.getFieldsValue();
       data.id = Id
-      if(!data.minorSymptoms){
+      data.status = this.status
+      if (!data.minorSymptoms) {
         message.warn('请选择子症状');
         return
       }
@@ -132,8 +136,8 @@ let Demo = React.createClass({
         }
       })
       this.setState({minsymptomList})
-    }).catch(()=>{
-      this.setState({minsymptomList:[]})
+    }).catch(() => {
+      this.setState({minsymptomList: []})
     })
   },
   render() {
@@ -156,10 +160,10 @@ let Demo = React.createClass({
             }}>取消</Button>
           <Button style={{
               marginLeft: '20px'
-            }} htmlType="submit" loading={loading}>存草稿</Button>
+            }} htmlType="submit" onClick={this.setType.bind(this, 0)} loading={loading}>存草稿</Button>
           <Button style={{
               marginLeft: '20px'
-            }} type="primary" htmlType="submit" loading={loading}>完成</Button>
+            }} type="primary" htmlType="submit" onClick={this.setType.bind(this, 2)} loading={loading}>完成</Button>
         </FormItem>
 
         <FormItem {...formItemLayout} label="疾病名">
@@ -193,20 +197,22 @@ let Demo = React.createClass({
           }
         </FormItem>
         {
-           <FormItem {...formItemLayout} label="包含子症状">
-                {
-                  getFieldDecorator('minorSymptoms', {
-                    rules: [
-                      {
-                        required: true,
-                        message: '必填'
-                      }
-                    ],
-                    initialValue: result.minorsymptoms
-                  })(minsymptomList.length > 0
-                    ?<CheckboxGroup options={minsymptomList}/>: <span className='cred'>未获取到子症状</span>)
-                }
-              </FormItem>
+          <FormItem {...formItemLayout} label="包含子症状">
+              {
+                getFieldDecorator('minorSymptoms', {
+                  rules: [
+                    {
+                      required: true,
+                      message: '必填'
+                    }
+                  ],
+                  initialValue: result.minorsymptoms
+                })(
+                  minsymptomList.length > 0
+                  ? <CheckboxGroup options={minsymptomList}/>
+                  : <span className='cred'>未获取到子症状</span>)
+              }
+            </FormItem>
 
         }
         <div className='inlinepull'>

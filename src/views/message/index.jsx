@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -18,7 +18,7 @@ import {validStr, roleList} from '../../tools'
 const {RangePicker} = DatePicker;
 const FormItem = Form.Item;
 const Option = Select.Option;
-const statusList = ['全部', '已发布', '定时发布', '草稿']
+const statusList = ['全部', '定时发布', '已发布', '草稿']
 export default class datalist extends Component {
   constructor() {
     super();
@@ -191,13 +191,8 @@ export default class datalist extends Component {
     this.getData(1)
   }
 
-  //新建记录
-  addAccount() {
-    this.setState({visible: true})
-  }
-
-  handleCancel() {
-    this.setState({visible: false})
+  resetData() {
+    hashHistory.push('/goback')
   }
 
   render() {
@@ -211,7 +206,7 @@ export default class datalist extends Component {
     } = this.state
     return (<div>
       <Form className='frmbtntop text-right'>
-        <Button>重置</Button>
+        <Button onClick={this.resetData.bind(this)}>重置</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量删除</Button>
         <Button href='#/message/edit'>发消息</Button>
       </Form>
@@ -235,7 +230,7 @@ export default class datalist extends Component {
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="接收角色">
-              <Select defaultValue="" onChange={this.sltStatus.bind(this, 'roles')} style={{
+              <Select defaultValue="" onChange={this.sltStatus.bind(this, 'roleId')} style={{
                   width: '220px'
                 }}>
                 <Option value="">全部</Option>

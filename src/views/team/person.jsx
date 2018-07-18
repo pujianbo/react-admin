@@ -43,7 +43,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -126,8 +129,10 @@ export default class datalist extends Component {
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -495,7 +500,7 @@ export default class datalist extends Component {
                         }}>(请务必按模板格式填写)</span>
                     </FormItem>
                     <FormItem {...formItemLayout} label="上传人员文件">
-                      <Upload beforeUpload={this.ajaxFile.bind(this)}>
+                      <Upload beforeUpload={this.ajaxFile.bind(this)} accept={excelType} fileList={[]}>
                         <Button>
                           <Icon type="upload"/>
                           选择文件

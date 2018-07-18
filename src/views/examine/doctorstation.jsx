@@ -1,33 +1,52 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
-  Modal,
   Form,
   Input,
   DatePicker,
+  Modal,
   Row,
   Col,
   Icon,
   Select,
-  Tabs,
-  Upload,
   message
 } from 'antd';
 import moment from 'moment';
-import {validStr} from '../../tools'
 const {RangePicker} = DatePicker;
-const TabPane = Tabs.TabPane;
 const FormItem = Form.Item;
 const Option = Select.Option;
+const dynamicType = [
+  '医站笔记',
+  '转发笔记',
+  '转发质检报告',
+  '转发科普报告',
+  '转发收藏',
+  '转发自诊报告',
+  '转发问答',
+  '转发科普知识',
+  '转发科室',
+  '转发医院',
+  '转发病例',
+  '转发通知',
+  '转发词条'
+]
 export default class datalist extends Component {
   constructor() {
     super();
     this.selectedRowID = '';
     this.selectedRowName = '';
     this.tabIndex = 1;
-    this.query = {};
+    this.query = {
+      sendUser: '',
+      dynamicTitle: '',
+      dynamicType: 0,
+      endTime: '',
+      startTime: '',
+      pageIndex: 1,
+      pageSize: 10
+    };
     this.state = {
       loading: false,
       data: [],
@@ -40,14 +59,17 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
           let sltname = ''
           selectedRows.map(item => {
-            sltid.push(item.id)
-            sltname += item.nickname + ','
+            sltid.push(item.targetId)
+            sltname += item.dynamicTitle + ','
           })
           this.selectedRowID = sltid;
           this.selectedRowName = sltname.slice(0, -1);
@@ -57,35 +79,33 @@ export default class datalist extends Component {
     this.columns = [
       {
         title: '动态标题',
-        dataIndex: 'nickname'
+        dataIndex: 'dynamicTitle'
       }, {
         title: '发布人',
-        dataIndex: 'phone'
+        dataIndex: 'sendUser'
       }, {
         title: '动态类型',
-        dataIndex: 'hospitalName',
-        render: (value, record) => '无'
+        render: (value, record) => dynamicType[record.dynamicType]
       }, {
         title: '点赞',
-        render: (value, record) => 12
+        render: (record) => record.likeNum || 0
       }, {
         title: '收藏',
-        render: (value, record) => 12
+        render: (record) => record.collectNum || 0
       }, {
         title: '评论',
-        render: (value, record) => 12
+        render: (record) => record.reviewNum || 0
       }, {
         title: '转发',
-        render: (value, record) => 12
+        render: (record) => record.forwardNum || 0
       }, {
         title: '创建时间',
-        dataIndex: 'lastLoginDate',
-        render: (value, record) => moment(record.lastLoginDate).format(format)
+        render: (record) => moment(record.createTime).format(format)
       }, {
         title: '操作',
         key: 'id',
-        render: (value, record) => (<span className='links'>
-          <Link title='详情' to={`/examine/doctorstation/detail/${record.id}`}><Icon type="exclamation-circle-o"/></Link>
+        render: (record) => (<span className='links'>
+          <Link title='详情' to={`/examine/doctorstation/detail/${record.dynamicType}/${record.targetId}`}><Icon type="exclamation-circle-o"/></Link>
         </span>)
       }
     ];
@@ -107,75 +127,22 @@ export default class datalist extends Component {
     if (newpage)
       pagination.current = newpage;
     const {current, pageSize} = pagination
-    console.log(pagination);
+    this.query.pageIndex = current
     ajax({
-      url: `/user/list-parameter?pageIndex=${current}&pageSize=${pageSize}`,
+      url: `/v1/hospitalmanage/content`,
       type: 'POST',
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.result, pagination,rowSelection})
         } else {
           // message.error(res.message)
         }
       }
     })
-  }
-
-  //单个编辑
-  edit(value, typeName) {
-    let _this = this;
-    Modal.confirm({
-      title: `您确定要${typeName}以下记录吗?`,
-      content: `昵称：${value.nickname}`,
-      onOk() {
-        if (typeName == '删除') {
-          ajax({
-            url: `/user/del/${value.id}`,
-            type: 'DELETE',
-            success: res => {
-              if (res.code == 0) {
-                message.success(res.message)
-                _this.getData(1);
-              } else {
-                message.error(res.message)
-              }
-            }
-          })
-        } else {
-          let url = `/user/batch-operate`;
-          let type = 'POST';
-          let data = {
-            ids: [value.id],
-            status: typeName.indexOf('解冻') > -1
-              ? 1
-              : 2
-          }
-          _this.mulDataHandle(url, type, data)
-        }
-      }
-    });
-  }
-
-  //文件上传
-  uploadFile(file, fileList) {
-    let data = new FormData();
-    data.append('tempFile', file);
-    uploadFile({
-      url: '/user/batch-insert',
-      data
-    }, (res) => {
-      if (res.code == 0) {
-        const {total, failcount} = res.result
-        message.success(`共计${total}数据；导入成功（${total - failcount}） 导入失败（${failcount}）`)
-        this.setState({visible: false})
-        this.getData(1)
-      } else {
-        message.error(res.message)
-      }
-    })
-    return false
   }
 
   //批量操作
@@ -186,44 +153,24 @@ export default class datalist extends Component {
       title: `您确定要${delType}以下记录吗?`,
       content: `选择项：${this.selectedRowName}`,
       onOk() {
-        let url = `/user/batch-del`
-        let type = 'DELETE'
-        let data = {
-          ids: _this.selectedRowID
-        }
-        if (delType.indexOf('删除') == -1) {
-          url = `/user/batch-operate`;
-          type = 'POST';
-          data.status = delType.indexOf('解冻') > -1
-            ? 1
-            : 2
-        }
-        _this.mulDataHandle(url, type, data)
+        ajax({
+          url: '/v1/hospitalmanage/delete',
+          type: 'POST',
+          data: {
+            dynamicType: _this.query.dynamicType,
+            ids: _this.selectedRowID
+          },
+          success: res => {
+            if (res.code == 0) {
+              message.success(res.message)
+              _this.getData(1);
+            } else {
+              message.error(res.message)
+            }
+          }
+        })
       }
     });
-  }
-
-  //批量操作数据
-  mulDataHandle(url, type, data) {
-    ajax({
-      url,
-      type,
-      data,
-      success: res => {
-        if (res.code == 0) {
-          message.success(res.message)
-          this.getData(1);
-        } else {
-          message.error(res.message)
-        }
-      }
-    })
-  }
-
-  //选择状态
-  sltStatus(value) {
-    this.query.status = value
-    this.getData(1)
   }
 
   //选择时间
@@ -234,13 +181,14 @@ export default class datalist extends Component {
     const endTime = time.length == 0
       ? ''
       : moment(time[1])
-    if (type == 0) { //创建时间
-      this.query.startDate = startTime
-      this.query.endDate = endTime
-    } else { //登录时间
-      this.query.loginStartDate = startTime
-      this.query.loginendDate = endTime
-    }
+    this.query.startTime = startTime
+    this.query.endTime = endTime
+    this.getData(1)
+  }
+
+  //选择状态
+  sltStatus(name, value) {
+    this.query[name] = value
     this.getData(1)
   }
 
@@ -250,63 +198,12 @@ export default class datalist extends Component {
     this.getData(1)
   }
 
-  //新建记录
-  addAccount() {
-    this.setState({visible: true})
-  }
-
-  handleCancel() {
-    this.setState({visible: false})
-  }
-
-  handleOk(e) {
-    e.preventDefault();
-    if (this.tabIndex == 1) {
-      const phone = $('#phone').val();
-      if (!validStr('phone', phone)) {
-        message.warning('请正确填写手机号')
-        return
-      }
-      ajax({
-        url: '/user/insertOne',
-        type: 'POST',
-        data: phone,
-        success: res => {
-          if (res.code == 0) {
-            this.setState({visible: false})
-            $('#phone').val('');
-            this.getData(1);
-          } else {
-            message.error(res.message)
-          }
-        }
-      })
-    }
-  }
-
-  tabChange(key) {
-    this.tabIndex = key
+  //重置数据
+  resetData() {
+    hashHistory.push('/goback')
   }
 
   render() {
-    const formItemLayout = {
-      labelCol: {
-        xs: {
-          span: 24
-        },
-        sm: {
-          span: 4
-        }
-      },
-      wrapperCol: {
-        xs: {
-          span: 24
-        },
-        sm: {
-          span: 16
-        }
-      }
-    };
     const {
       data,
       pagination,
@@ -317,27 +214,35 @@ export default class datalist extends Component {
     } = this.state
     return (<div>
       <Form className='frmbtntop text-right'>
-        <Button>重置</Button>
+        <Button onClick={this.resetData.bind(this)}>重置</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量删除</Button>
       </Form>
       <Form layout="inline" className='frminput'>
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="动态标题">
-              <Input placeholder='搜索动态标题' onChange={this.getValue.bind(this, 'nickname')} style={{width: '220px'}}/>
+              <Input placeholder='搜索动态标题' onChange={this.getValue.bind(this, 'dynamicTitle')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="发布人">
-              <Input placeholder='搜索发布人' onChange={this.getValue.bind(this, 'nickname')} style={{width: '220px'}}/>
+              <Input placeholder='搜索发布人' onChange={this.getValue.bind(this, 'sendUser')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="动态类型">
-              <Select defaultValue="" onChange={this.sltStatus.bind(this)} style={{width: '220px'}}>
-                <Option value="">全部</Option>
-                <Option value="0">转发笔记</Option>
-                <Option value="1">转发词条</Option>
+              <Select defaultValue={0} onChange={this.sltStatus.bind(this, 'dynamicType')} style={{
+                  width: '220px'
+                }}>
+                {
+                  dynamicType.map((item, index) => {
+                    return <Option value={index}>{item}</Option>
+                  })
+                }
               </Select>
             </FormItem>
           </Col>
@@ -345,7 +250,7 @@ export default class datalist extends Component {
         <Row gutter={8}>
           <Col span={16}>
             <FormItem label="创建时间">
-              <RangePicker onChange={this.sltTime.bind(this, 1)} style={{
+              <RangePicker onChange={this.sltTime.bind(this)} style={{
                   width: '220px'
                 }}/>
             </FormItem>
@@ -353,7 +258,7 @@ export default class datalist extends Component {
         </Row>
       </Form>
 
-      <Table rowSelection={rowSelection} columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
+      <Table rowSelection={rowSelection} rowClassName='docstat_tr' columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
     </div>)
   }
 }

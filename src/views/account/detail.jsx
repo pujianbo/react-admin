@@ -53,7 +53,7 @@ export default class datalist extends Component {
                     }</td>
                 </tr>
                 <tr>
-                  <td>手机号：{result.phone || '无'}</td>
+                  <td>手机号：{result.phone || result.docPhone || '无'}</td>
                 </tr>
                 {
                   type == 'admin'
@@ -87,7 +87,7 @@ export default class datalist extends Component {
                       </tr>,
                       <tr>
                         <td>地址：</td>
-                        <td>{result.region || '无'}</td>
+                        <td>{result.address || '无'}</td>
                       </tr>,
                       <tr>
                         <td>个性签名：</td>
@@ -108,23 +108,15 @@ export default class datalist extends Component {
                       </tr>
                       <tr>
                         <td>医院：</td>
-                        <td>{hospital.name || '无'}</td>
+                        <td>{result.hospitalName || '无'}</td>
                       </tr>
                       <tr>
                         <td>科室：</td>
-                        <td>{
-                            result.department
-                              ? result.department.name
-                              : '无'
-                          }</td>
+                        <td>{result.deptName || '无'}</td>
                       </tr>
                       <tr>
                         <td>职称：</td>
-                        <td>{
-                            result.jobTitle
-                              ? result.jobTitle.name
-                              : '无'
-                          }</td>
+                        <td>{result.jobTitleDesc || '无'}</td>
                       </tr>
                       <tr>
                         <td>学校职称：</td>
@@ -170,7 +162,13 @@ export default class datalist extends Component {
                   <td>
                     <Tag color={result.status == 1
                         ? 'green'
-                        : 'red'}>{['未激活', '正常', '冻结'][result.status]}</Tag>
+                        : 'red'}>{
+                        ['未激活', '正常', '冻结'][
+                          type == 'doctor'
+                            ? result.userStatus
+                            : result.status
+                        ]
+                      }</Tag>
                   </td>
                 </tr>
                 {
@@ -187,7 +185,11 @@ export default class datalist extends Component {
                 </tr>
                 <tr>
                   <td>登录时间：</td>
-                  <td>{moment(result.lastLoginDate).format(format)}</td>
+                  <td>{
+                      result.lastLoginDate
+                        ? moment(result.lastLoginDate).format(format)
+                        : '无'
+                    }</td>
                 </tr>
               </table>
             </div>

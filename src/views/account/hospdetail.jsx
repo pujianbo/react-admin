@@ -1,6 +1,6 @@
 import React, {Component} from 'react'
 import {Link, hashHistory} from 'react-router'
-import {Avatar, Tag, Icon, Button} from 'antd';
+import {Avatar, Tag, Icon, Button, message} from 'antd';
 import moment from 'moment'
 
 import imgZhizhao from '../../img/other/zhizhao.jpg'
@@ -15,7 +15,9 @@ export default class datalist extends Component {
     hospId = id
     hospSign = sign
     this.state = {
-      result: {},
+      result: {
+        hospital: {}
+      },
       count: 0
     }
   }
@@ -24,7 +26,7 @@ export default class datalist extends Component {
       url: `/hospital/get/${hospId}`,
       async: false,
       success: res => {
-        if (res.code == 0) {
+        if (res.code == 0 && res.result) {
           this.setState({result: res.result})
         } else {
           message.error(res.message);
@@ -63,6 +65,12 @@ export default class datalist extends Component {
     const imgUrl = hospital.hospitalImg
       ? fileUrl + hospital.hospitalImg.place
       : ''
+    const businessImg = hospital.businessImg
+      ? fileUrl + hospital.businessImg.place
+      : ''
+    const licenseImg = hospital.licenseImg
+      ? fileUrl + hospital.licenseImg.place
+      : ''
     return (<div className='tbdetail'>
       {
         hospSign
@@ -76,8 +84,10 @@ export default class datalist extends Component {
               <Button href={`#/account/hospedit/${hospId}`}>编辑信息</Button>
             </div>
       }
-      <a className='block' target='_blank'>
-        <img src={imgUrl}/>
+      <a className='block' target='_blank' href={imgUrl}>
+        <img src={imgUrl} style={{
+            maxHeight: '300px'
+          }}/>
       </a>
       <div className='tbbar'>基本信息</div>
       <table>
@@ -136,8 +146,8 @@ export default class datalist extends Component {
           <td colSpan='2'>
             <p>医疗许可证：</p>
             <p>
-              <a className='imglink' target='_blank' href={fileUrl + hospital.businessImg.place}>
-                <img src={fileUrl + hospital.businessImg.place}/>
+              <a className='imglink' target='_blank' href={businessImg}>
+                <img src={businessImg}/>
               </a>
             </p>
           </td>
@@ -146,7 +156,11 @@ export default class datalist extends Component {
           <td>有效时间：</td>
           <td>
             {hospital.businessDescribe}
-            {this.dateOK(hospital.businessDescribe.split('~')[1])}
+            {
+              hospital.businessDescribe
+                ? this.dateOK(hospital.businessDescribe.split('~')[1])
+                : null
+            }
           </td>
         </tr>
         <tr>
@@ -158,8 +172,8 @@ export default class datalist extends Component {
           <td colSpan='2'>
             <p>营业执照：</p>
             <p>
-              <a className='imglink' target='_blank' href={fileUrl + hospital.licenseImg.place}>
-                <img src={fileUrl + hospital.licenseImg.place}/>
+              <a className='imglink' target='_blank' href={licenseImg}>
+                <img src={licenseImg}/>
               </a>
             </p>
           </td>
@@ -168,7 +182,11 @@ export default class datalist extends Component {
           <td>有效时间：</td>
           <td>
             {hospital.licenseDescribe}
-            {this.dateOK(hospital.licenseDescribe.split('~')[1])}
+            {
+              hospital.licenseDescribe
+                ? this.dateOK(hospital.licenseDescribe.split('~')[1])
+                : null
+            }
           </td>
         </tr>
         <tr>

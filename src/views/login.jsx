@@ -34,6 +34,10 @@ export default class login extends Component {
   }
   componentWillMount() {
     localStorage.clear()
+    localStorage.usertype = 1
+    const {msg} = this.props.params
+    if (msg)
+      message.error(decodeURI(msg))
   }
 
   emitEmpty(name, e) {
@@ -74,19 +78,26 @@ export default class login extends Component {
       success: (res) => {
         if (res.code == 0) {
           if (this.state.saveStus) {
-            localStorage.userpwd = this.state.password
+            localStorage.userpwd = password
           } else {
             delete localStorage.userpwd
           }
-          localStorage.username = userName;
+          localStorage.username = res.result.nickname || userName;
+          localStorage.userId = res.result.id;
+          localStorage.token = res.result.token;
           localStorage.userinfo = JSON.stringify(res.result);
           let url = '/account/'
           let path = 'account'
           if (this.status == 2) {
             const {id} = res.result.hospital
             localStorage.hospitalId = id
-            url = `account/hospdetail/${id}`
+            url = `account/hospdetail/${localStorage.userId}`
             path = 'team'
+          }
+
+          if (this.props.location.query.back) {
+            hashHistory.go(-1)
+            return
           }
           hashHistory.push(url)
           localStorage.syskeyPath = path

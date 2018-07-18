@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -144,7 +144,7 @@ export default class datalist extends Component {
 
   //重置数据
   resetData() {
-    console.log('resetData');
+    hashHistory.push('/goback')
   }
 
   render() {

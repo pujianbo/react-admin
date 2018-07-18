@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -11,7 +11,7 @@ import {
   Select,
   message
 } from 'antd';
-import {departList, jobTitles} from '../../tools'
+import {departList, jobTitles, unitMoney} from '../../tools'
 
 const FormItem = Form.Item;
 const Option = Select.Option;
@@ -22,13 +22,12 @@ export default class datalist extends Component {
     this.selectedRowID = '';
     this.selectedRowName = '';
     this.query = {
-      name: '',
-      status: -1,
-      start: "1970-01-01 00:00:00",
-      stop: "2099-01-01 00:00:00"
+      pageIndex: 1,
+      pageSize: 10
     };
     this.state = {
       loading: false,
+      dltdisabled: true,
       data: [],
       jobList: [],
       departList: [],
@@ -38,46 +37,51 @@ export default class datalist extends Component {
         total: 1
       },
       rowSelection: {
+        selectedRowKeys: [],
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
           let sltname = ''
           selectedRows.map(item => {
             sltid.push(item.id)
-            sltname += item.title + ','
+            sltname += item.msgTitle + ','
           })
           this.selectedRowID = sltid;
           this.selectedRowName = sltname.slice(0, -1);
+          return true
         }
       }
     };
     this.columns = [
       {
         title: '医院名',
-        dataIndex: 'title'
+        dataIndex: 'hospName'
       }, {
         title: '医院类型',
-        render: (value, record) => hospitalType[0]
+        render: (record) => hospitalType[record.type]
       }, {
         title: '经营类型',
-        render: (value, record) => hospitalStyle[0]
+        render: (record) => hospitalStyle[record.style]
       }, {
         title: '医院等级',
-        render: (value, record) => hospitalLevel[0]
+        render: (record) => hospitalLevel[record.level]
       }, {
         title: '收入',
-        render: (value, record) => '500,000'
+        render: (record) => unitMoney(record.income)
       }, {
         title: '支出',
-        render: (value, record) => '900,000'
+        render: (record) => unitMoney(record.exp)
       }, {
         title: '提现',
-        render: (value, record) => '500,000'
+        render: (record) => unitMoney(record.PutForward)
       }, {
         title: '余额',
-        render: (value, record) => '900,000'
+        render: (record) => unitMoney(record.balance)
       }, {
         title: '操作',
         key: 'id',
@@ -110,15 +114,17 @@ export default class datalist extends Component {
     if (newpage)
       pagination.current = newpage;
     const {current, pageSize} = pagination
-    console.log(pagination);
+    this.query.pageIndex = current
     ajax({
-      url: `/v1/tcm/healthcaresuggests?pageIndex=${current}&pageSize=${pageSize}&parameter=${encodeURI(JSON.stringify(this.query))}`,
-      type: 'GET',
-      // data: this.query,
+      url: `/financialManage/queryHospitalInfo`,
+      type: 'POST',
+      data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -140,22 +146,35 @@ export default class datalist extends Component {
 
   //重置数据
   resetData() {
-    console.log('resetData');
+    hashHistory.push('/goback')
+  }
+
+  //导出Excel
+  saveExcel() {
+    this.setState({loading: true})
+    ajaxBlob({
+      url: '/financialManage/exporthospitalfinancial',
+      data: this.query,
+      filename: `医院财务.xls`
+    }, () => {
+      this.setState({loading: false})
+    })
   }
 
   render() {
     const {
       data,
       pagination,
-      loading,
       rowSelection,
+      dltdisabled,
+      loading,
       jobList,
       departList
     } = this.state
     return (<div>
       <Form className='frmbtntop text-right'>
         <Button onClick={this.resetData.bind(this)}>重置</Button>
-        <Button>导出</Button>
+        <Button onClick={this.saveExcel.bind(this)} loading={loading}>导出</Button>
       </Form>
       <Form layout="inline" className='frminput' id='lbl5'>
         <Row gutter={8}>
@@ -170,14 +189,12 @@ export default class datalist extends Component {
             <FormItem label="医院类型">
               <Select defaultValue="" style={{
                   width: '220px'
-                }} onChange={this.sltStatus.bind(this, 'title')}>
+                }} onChange={this.sltStatus.bind(this, 'type')}>
                 <Option value="">全部</Option>
                 {
-                  hospitalType.map(item =>< Option value = {
-                    item
-                  } > {
-                    item
-                  }</Option>)
+                  hospitalType.map((item, index) => {
+                    return <Option value={index}>{item}</Option>
+                  })
                 }
               </Select>
             </FormItem>
@@ -186,14 +203,12 @@ export default class datalist extends Component {
             <FormItem label="经营类型">
               <Select defaultValue="" style={{
                   width: '220px'
-                }} onChange={this.sltStatus.bind(this, 'title')}>
+                }} onChange={this.sltStatus.bind(this, 'style')}>
                 <Option value="">全部</Option>
                 {
-                  hospitalStyle.map(item =>< Option value = {
-                    item
-                  } > {
-                    item
-                  }</Option>)
+                  hospitalStyle.map((item, index) => {
+                    return <Option value={index}>{item}</Option>
+                  })
                 }
               </Select>
             </FormItem>
@@ -204,21 +219,19 @@ export default class datalist extends Component {
             <FormItem label="医院等级">
               <Select defaultValue="" style={{
                   width: '220px'
-                }} onChange={this.sltStatus.bind(this, 'title')}>
+                }} onChange={this.sltStatus.bind(this, 'level')}>
                 <Option value="">全部</Option>
                 {
-                  hospitalLevel.map(item =>< Option value = {
-                    item
-                  } > {
-                    item
-                  }</Option>)
+                  hospitalLevel.map((item, index) => {
+                    return <Option value={index}>{item}</Option>
+                  })
                 }
               </Select>
             </FormItem>
           </Col>
         </Row>
       </Form>
-      <Table columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
+      <Table rowSelection={rowSelection} columns={this.columns} dataSource={data} pagination={pagination} onChange={this.handleTableChange.bind(this)}/>
     </div>)
   }
 }

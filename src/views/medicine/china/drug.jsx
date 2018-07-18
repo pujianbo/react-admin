@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -65,7 +65,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -94,7 +97,7 @@ export default class datalist extends Component {
         render: (value, record) => moment(record.createTime).format(format)
       }, {
         title: '编辑状态',
-        render: (value, record) => [, '草稿', '正常'][record.status]
+        render: (value, record) => [, '草稿', '完成'][record.status]
       }, {
         title: '操作',
         key: 'id',
@@ -120,6 +123,7 @@ export default class datalist extends Component {
     this.setState({pagination})
     this.getData(pagination.current);
   }
+
   //获取列表
   getData(newpage) {
     let {pagination} = this.state
@@ -130,7 +134,7 @@ export default class datalist extends Component {
     ajax({
       url: `/v1/tcm/${this.fntype == 1
         ? 'drugs'
-        : 'prescriptions'}?pageIndex=${current}&pageSize=${pageSize}&parameter=${encodeURI(JSON.stringify(this.query))}`,
+        : 'findprescriptions'}?pageIndex=${current}&pageSize=${pageSize}&parameter=${encodeURI(JSON.stringify(this.query))}`,
       type: 'GET',
       // data: this.query,
       success: res => {
@@ -141,7 +145,9 @@ export default class datalist extends Component {
         } else {
           pagination.total = 0
         }
-        this.setState({data, pagination})
+        let {rowSelection} = this.state
+        rowSelection.selectedRowKeys = []
+        this.setState({data, pagination, rowSelection})
       }
     })
   }
@@ -172,7 +178,7 @@ export default class datalist extends Component {
       content: `选择项：${tipInfo}`,
       onOk() {
         ajax({
-          url: `/v1/tcm/${this.fntype == 1
+          url: `/v1/tcm/${_this.fntype == 1
             ? 'drugs'
             : 'prescriptions'}`,
           type: 'PUT',
@@ -192,13 +198,12 @@ export default class datalist extends Component {
 
   //文件上传
   ajaxFile(file, fileList) {
-    return;
-    let url = '/doctor/batch-auth';
-    let name = 'authFile'
     let data = new FormData();
-    data.append(name, file);
+    data.append('authFile', file);
     uploadFile({
-      url: url + `?id=${localStorage.hospitalId}`,
+      url: `/v1/import/${this.fntype == 1
+        ? 'exceltodrug'
+        : 'exceltoprescription'}`,
       data
     }, (res) => {
       if (res.code == 0) {
@@ -261,7 +266,23 @@ export default class datalist extends Component {
 
   //重置数据
   resetData() {
-    console.log('resetData');
+    hashHistory.push('/goback')
+  }
+
+  //导出Excel
+  saveExcel() {
+    this.setState({loading: true})
+    ajaxBlob({
+      url: `/v1/import/${this.fntype == 1
+        ? 'exportdrug'
+        : 'exportprescription'}`,
+      type: 'GET',
+      filename: `中医自诊-${this.fntype == 1
+        ? '中成药'
+        : '中药方'}.xls`
+    }, () => {
+      this.setState({loading: false})
+    })
   }
 
   render() {
@@ -280,18 +301,22 @@ export default class datalist extends Component {
         <Button onClick={this.resetData.bind(this)}>重置</Button>
         <Button onClick={this.visiModal.bind(this)}>批量添加</Button>
         <Button href={'#/medicine/china/drug/edit/' + this.fntype}>添加</Button>
-        <Button>导出</Button>
+        <Button onClick={this.saveExcel.bind(this)} loading={loading}>导出</Button>
       </Form>
       <Form layout="inline" className='frminput'>
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="药品名称">
-              <Input placeholder='搜索药品名称' onChange={this.getValue.bind(this, 'name')} style={{width: '220px'}}/>
+              <Input placeholder='搜索药品名称' onChange={this.getValue.bind(this, 'name')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="药品类别">
-              <Select defaultValue="1" onChange={this.sltStatus.bind(this, 'fntype')} style={{width: '220px'}}>
+              <Select defaultValue="1" onChange={this.sltStatus.bind(this, 'fntype')} style={{
+                  width: '220px'
+                }}>
                 <Option value="1">中成药</Option>
                 <Option value="2">中药方</Option>
               </Select>
@@ -308,7 +333,9 @@ export default class datalist extends Component {
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="编辑状态">
-              <Select defaultValue="-1" onChange={this.sltStatus.bind(this, 'status')} style={{width: '220px'}}>
+              <Select defaultValue="-1" onChange={this.sltStatus.bind(this, 'status')} style={{
+                  width: '220px'
+                }}>
                 <Option value="-1">全部</Option>
                 <Option value="2">完成</Option>
                 <Option value="1">草稿</Option>
@@ -317,15 +344,20 @@ export default class datalist extends Component {
           </Col>
         </Row>
       </Form>
-      <Modal visible={visible} title='批量添加' onCancel={this.handleCancel.bind(this)} footer={null}>
+      <Modal visible={visible} title={'批量添加【' + (
+          this.fntype == 1
+          ? '中成药'
+          : '中药方') + '】'} onCancel={this.handleCancel.bind(this)} footer={null}>
         <FormItem {...formItemLayout} label="下载模板">
-          <Button href='http://tederenoss.oss-cn-beijing.aliyuncs.com/kys/%E5%8C%BB%E7%94%9F%E6%89%B9%E9%87%8F%E8%AE%A4%E8%AF%81%E6%A8%A1%E6%9D%BF.xlsx'>下载模板</Button>
+          <Button href={excelUrl + `/access/${this.fntype == 1
+              ? '%E4%B8%AD%E6%88%90%E8%8D%AF%E6%A8%A1%E6%9D%BF'
+              : '%E4%B8%AD%E8%8D%AF%E6%96%B9%E6%A8%A1%E6%9D%BF'}.xlsx`}>下载模板</Button>
           <span className='cgreen' style={{
               marginLeft: '10px'
             }}>(请务必按模板格式填写)</span>
         </FormItem>
         <FormItem {...formItemLayout} label="上传文件">
-          <Upload beforeUpload={this.ajaxFile.bind(this)}>
+          <Upload beforeUpload={this.ajaxFile.bind(this)} accept={excelType} fileList={[]}>
             <Button>
               <Icon type="upload"/>
               选择文件

@@ -1,5 +1,5 @@
 import React, {Component} from 'react'
-import {Link} from 'react-router'
+import {Link, hashHistory} from 'react-router'
 import {
   Table,
   Button,
@@ -42,7 +42,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -117,8 +120,10 @@ export default class datalist extends Component {
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -158,8 +163,8 @@ export default class datalist extends Component {
     let url = '/stdbiocheck/batchModify'
     let type = 'POST'
     let data = {
-      ids: this.selectedRowID,
-      status: 1
+      freeze: '非法操作',
+      ids: this.selectedRowID
     }
     if (name == '删除') {
       url = '/stdbiocheck/batchDel'
@@ -242,6 +247,23 @@ export default class datalist extends Component {
     return false
   }
 
+  //重置数据
+  resetData() {
+    hashHistory.push('/goback')
+  }
+
+  //保存Excel
+  saveExcel() {
+    this.setState({loading: true})
+    ajaxBlob({
+      url: '/stdbiocheck/exportbycondition',
+      filename: `西医智检结论.xls`,
+      data: this.query
+    }, res => {
+      this.setState({loading: false})
+    })
+  }
+
   render() {
     const formItemLayout = {
       labelCol: {
@@ -274,10 +296,10 @@ export default class datalist extends Component {
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量删除</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量屏蔽</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量恢复</Button>
-        <Button>重置</Button>
+        <Button onClick={this.resetData.bind(this)}>重置</Button>
         <Button href='#/medicine/west/conclusion/edit'>添加</Button>
         <Button onClick={this.handleShow.bind(this)}>批量添加</Button>
-        <Button>导出</Button>
+        <Button onClick={this.saveExcel.bind(this)} loading={loading}>导出</Button>
       </Form>
       <Form layout="inline" className='frminput'>
         <Row gutter={8}>
@@ -338,13 +360,13 @@ export default class datalist extends Component {
       <Modal visible={visible} title="批量添加" onCancel={this.handleCancel.bind(this)} footer={null}>
         <Form>
           <FormItem {...formItemLayout} label="下载模板">
-            <Button href='http://tederenoss.oss-cn-beijing.aliyuncs.com/kys/%E7%94%A8%E6%88%B7%E6%89%B9%E9%87%8F%E5%AF%BC%E5%85%A5%E6%A8%A1%E6%9D%BF.xlsx'>下载模板</Button>
+            <Button href={excelUrl + '/access/KYS%E6%A3%80%E9%AA%8C%E9%A1%B9%E7%9B%AE%E6%89%B9%E9%87%8F%E6%B7%BB%E5%8A%A0%E6%A8%A1%E6%9D%BF.xlsx'}>下载模板</Button>
             <span className='cgreen' style={{
                 marginLeft: '10px'
               }}>(请务必按模板格式填写)</span>
           </FormItem>
           <FormItem {...formItemLayout} label="上传传模板">
-            <Upload beforeUpload={this.uploadFile.bind(this)}>
+            <Upload beforeUpload={this.uploadFile.bind(this)} accept={excelType} fileList={[]}>
               <Button>
                 <Icon type="upload"/>
                 选择文件

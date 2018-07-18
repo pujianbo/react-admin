@@ -64,7 +64,9 @@ let Demo = React.createClass({
       this.setState({loading: true})
       ajax({
         url: '/v1/tcm/mainsymptom',
-        type: 'POST',
+        type: Id
+          ? 'PUT'
+          : 'POST',
         data,
         success: res => {
           this.setState({loading: false})

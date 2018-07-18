@@ -14,7 +14,7 @@ import {
   message
 } from 'antd';
 import moment from 'moment';
-import {validStr,roleList} from '../../tools'
+import {validStr, roleList2} from '../../tools'
 const {RangePicker} = DatePicker;
 const FormItem = Form.Item;
 const Option = Select.Option;
@@ -39,8 +39,12 @@ export default class datalist extends Component {
         total: 1
       },
       rowSelection: {
+        selectedRowKeys: [],
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -63,7 +67,9 @@ export default class datalist extends Component {
         dataIndex: 'phone'
       }, {
         title: '角色',
-        render: (value, record) => record.role?record.role.roleName:null
+        render: (value, record) => record.role
+          ? record.role.roleName
+          : null
       }, {
         title: '创建时间',
         render: (value, record) => moment(record.cteateDate).format(format)
@@ -94,7 +100,7 @@ export default class datalist extends Component {
 
   componentWillMount() {
     this.getData()
-    roleList().then(roleList => {
+    roleList2().then(roleList => {
       this.setState({roleList})
     })
   }
@@ -118,8 +124,10 @@ export default class datalist extends Component {
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -321,19 +329,23 @@ export default class datalist extends Component {
         <Row gutter={8}>
           <Col span={8}>
             <FormItem label="用户昵称">
-              <Input placeholder='搜索昵称或姓名' onChange={this.getValue.bind(this, 'nickname')} style={{width: '220px'}}/>
+              <Input placeholder='搜索昵称或姓名' onChange={this.getValue.bind(this, 'nickname')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="手机号码">
-              <Input placeholder='手机号' ref='phone' name='phone' maxLength='11' onChange={this.getValue.bind(this, 'phone')} style={{width: '220px'}}/>
+              <Input placeholder='手机号' ref='phone' name='phone' maxLength='11' onChange={this.getValue.bind(this, 'phone')} style={{
+                  width: '220px'
+                }}/>
             </FormItem>
           </Col>
           <Col span={8}>
             <FormItem label="账号状态">
               <Select defaultValue="" style={{
                   width: '220px'
-                }}  onChange={this.sltStatus.bind(this,'status')}>
+                }} onChange={this.sltStatus.bind(this, 'status')}>
                 <Option value="">全部</Option>
                 <Option value="0">未激活</Option>
                 <Option value="1">正常</Option>
@@ -361,7 +373,7 @@ export default class datalist extends Component {
             <FormItem label="用户角色">
               <Select defaultValue="" style={{
                   width: '220px'
-                }}  onChange={this.sltStatus.bind(this, 'role')}>
+                }} onChange={this.sltStatus.bind(this, 'role')}>
                 <Option value="">全部</Option>
                 {roleTag}
               </Select>

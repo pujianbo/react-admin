@@ -46,7 +46,10 @@ export default class datalist extends Component {
       },
       rowSelection: {
         onChange: (selectedRowKeys, selectedRows) => {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = selectedRowKeys
           this.setState({
+            rowSelection,
             dltdisabled: selectedRowKeys.length == 0
           })
           let sltid = []
@@ -74,7 +77,7 @@ export default class datalist extends Component {
         dataIndex: 'deptName'
       }, {
         title: '职称',
-        render: (value, record) => record.jobTitle?this.state.jobList.find(i => i.id == record.jobTitle).name:null
+        dataIndex: 'jobTitleDesc'
       }, {
         title: '行医资格',
         render: (value, record) => ['正常', '禁止'][record.qualification]
@@ -91,18 +94,18 @@ export default class datalist extends Component {
       }, {
         title: '账户状态',
         dataIndex: 'status',
-        render: (value, record) => ['未激活', '正常', '冻结'][record.status]
+        render: (value, record) => ['未激活', '正常', '冻结'][record.userStatus]
       }, {
         title: '操作',
         key: 'id',
         render: (value, record) => (<span className='links'>
           <Link title='详情' to={`/account/detail/doctor/${record.id}`}><Icon type="exclamation-circle-o"/></Link>
-          <a title={record.status == 2
+          <a title={record.userStatus == 2
               ? '解冻'
               : '冻结'} onClick={this.edit.bind(
-              this, value, record.status == 2
+              this, value, record.userStatus == 2
               ? '解冻'
-              : '冻结')}><Icon type={record.status == 2
+              : '冻结')}><Icon type={record.userStatus == 2
             ? 'unlock'
             : 'lock'}/></a>
           <a title='移动' onClick={this.editModal.bind(this, 1, value)}><Icon type="right-circle-o"/></a>
@@ -148,8 +151,10 @@ export default class datalist extends Component {
       data: this.query,
       success: res => {
         if (res.code == 0) {
+          let {rowSelection} = this.state
+          rowSelection.selectedRowKeys = []
           pagination.total = res.result.count
-          this.setState({data: res.result.list, pagination})
+          this.setState({data: res.result.list, pagination, rowSelection})
         } else {
           // message.error(res.message)
         }
@@ -434,7 +439,7 @@ export default class datalist extends Component {
     } = this.state
     return (<div>
       <Form className='frmbtntop text-right'>
-        <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量移除</Button>
+        {/*<Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量移除</Button>*/}
         <Button type="danger" disabled={dltdisabled} onClick={this.editModal.bind(this, 1)}>批量移动</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量禁止</Button>
         <Button type="danger" disabled={dltdisabled} onClick={this.handleSlt.bind(this)}>批量解禁</Button>
@@ -553,7 +558,7 @@ export default class datalist extends Component {
                         }}>(请务必按模板格式填写)</span>
                     </FormItem>
                     <FormItem {...formItemLayout} label="上传医生文件">
-                      <Upload beforeUpload={this.ajaxFile.bind(this, 1)}>
+                      <Upload beforeUpload={this.ajaxFile.bind(this, 1)} accept={excelType} fileList={[]}>
                         <Button>
                           <Icon type="upload"/>
                           选择文件
@@ -573,7 +578,7 @@ export default class datalist extends Component {
             }}>(请务必按模板格式填写)</span>
         </FormItem>
         <FormItem {...formItemLayout} label="上传认证文件">
-          <Upload beforeUpload={this.ajaxFile.bind(this, 2)}>
+          <Upload beforeUpload={this.ajaxFile.bind(this, 2)} accept={excelType} fileList={[]}>
             <Button>
               <Icon type="upload"/>
               选择文件

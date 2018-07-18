@@ -79,7 +79,7 @@ export default class datalist extends Component {
                 <colgroup span="1" className='tbtitle'/>
                 <tr>
                   <td>问题状态：</td>
-                  <td>{['全部', '已发布', '草稿'][result.state]}</td>
+                  <td>{['全部', '已发布', '草稿', '屏蔽'][result.state]}</td>
                 </tr>
                 <tr>
                   <td>发布时间：</td>

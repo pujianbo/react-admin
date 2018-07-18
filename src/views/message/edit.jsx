@@ -29,6 +29,7 @@ const TabPane = Tabs.TabPane;
 let Id = null
 let Demo = React.createClass({
   ue: null,
+  save: 1,
   sendTime: null,
   regions: [],
   regionCodes: [],
@@ -36,14 +37,15 @@ let Demo = React.createClass({
     return {result: {}, checked: false, cityList: [], roleList: []};
   },
   componentWillMount() {
+    this.regions = []
+    this.regionCodes = []
     serverCity().then((cityList) => {
       this.setState({cityList})
     })
     roleList().then((roleList) => {
       roleList.map((item, index) => {
         item.label = item.roleName
-        // item.value = item.id
-        item.value = index
+        item.value = item.id
       })
       this.setState({roleList})
     })
@@ -68,6 +70,9 @@ let Demo = React.createClass({
       UE.getEditor('container').destroy();
     }
   },
+  saveTemp(type) {
+    this.save = type;
+  },
   handleSubmit(e) {
     e.preventDefault();
     this.props.form.validateFields((errors, values) => {
@@ -82,6 +87,7 @@ let Demo = React.createClass({
       data.msgContent = msgContent
       data.region = this.regions
       data.regionCodes = this.regionCodes
+      // data.status = 3//草稿
       console.log(data);
       if (this.state.checked) {
         if (this.sendTime) {
@@ -93,9 +99,13 @@ let Demo = React.createClass({
       }
       if (Id)
         data.id = Id
+      // if (this.save == 2)
+      //   data.status = 3
 
       ajax({
-        url: `/v1/announcement/saveorupdate`,
+        url: `/v1/announcement/${this.save == 2
+          ? 'savedraft'
+          : 'saveorupdate'}`,
         type: 'POST',
         data,
         success: res => {
@@ -115,9 +125,10 @@ let Demo = React.createClass({
       this.regionCodes.push(value)
       this.regions.push(lbl)
     } else {
-      this.region.splice(this.regions.findIndex(item => item == lbl), 1)
+      this.regions.splice(this.regions.findIndex(item => item == lbl), 1)
       this.regionCodes.splice(this.regionCodes.findIndex(item => item == value), 1)
     }
+    console.log(this.regions);
     this.regions = Array.from(new Set(this.regions))
     this.regionCodes = Array.from(new Set(this.regionCodes))
     console.log(this.regions);
@@ -183,11 +194,13 @@ let Demo = React.createClass({
             }}>定时发布</Checkbox>
           <Button style={{
               marginRight: '10px'
+            }} onClick={() => {
+              hashHistory.go(-1)
             }}>取消</Button>
-          <Button style={{
+          <Button htmlType="submit" style={{
               marginRight: '10px'
-            }}>存草稿</Button>
-          <Button type='primary' htmlType="submit">发布</Button>
+            }} onClick={this.saveTemp.bind(this, 2)}>存草稿</Button>
+          <Button type='primary' htmlType="submit" onClick={this.saveTemp.bind(this, 1)}>发布</Button>
         </div>
         <FormItem {...formItemLayout} label="消息范围">
           {
