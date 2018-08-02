@@ -11,7 +11,7 @@
     "browser": "webpack-dev-server --inline --content-base . --progress --history-api-fallback"
   },
   "theme": {
-    "primary-color": "#1DA57A"
+    "primary-color": "#ce1740"
   },
   "author": "",
   "license": "ISC",

@@ -4,7 +4,7 @@
     ["import", {
       "libraryName": "antd",
       "libraryDirectory": "es",
-      "style": true
+      "style": "css"
     }],
     ["transform-runtime", {
       "helpers": false,

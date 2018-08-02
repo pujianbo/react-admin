@@ -20,10 +20,7 @@ window.hospitalLevel = [
 // window.doctorTitle = ['执业医师', '主治医师', '主任医师', '副主任医师']
 window.schoolTitle = ['助教', '讲师', '副教授', '教授']
 
-let apiUrl = location.host.indexOf('192') > -1
-  ? 'http://192.168.0.100:8090'
-  // ? 'http://192.168.0.112:8090'
-  : 'http://kysapi.tederen.com'
+let apiUrl = 'http://kysapi.tederen.com'
 
 import {Modal} from 'antd'
 

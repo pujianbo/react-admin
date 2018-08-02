@@ -11,7 +11,7 @@ import './scss/common/public.scss'
 import './scss/main.scss'
 
 //引入插件全部样式
-import 'antd/dist/antd.css';
+import 'antd/dist/antd.less';
 
 //引入vconsole调试
 // import './plugins/js/vconsole.js'
